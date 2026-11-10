@@ -262,8 +262,8 @@
         <div class="row">
           <div>
             <label>Client <span style="color:var(--danger)">*</span></label>
-            <input id="clientSearch" placeholder="Search clients..." oninput="filterClients()" style="margin-bottom:4px">
-            <select id="clientSelect" onchange="onClientChange()" size="5" style="height:140px; overflow-y:auto"></select>
+            <input id="clientSearch" placeholder="Search clients..." onfocus="showClientList()" onblur="hideClientList()" oninput="filterClients()" autocomplete="off">
+            <select id="clientSelect" onchange="onClientChange()" size="6" style="display:none; height:160px; overflow-y:auto; position:absolute; z-index:20; background:white; width:100%; max-width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15)"></select>
             <button class="secondary" style="margin-top:6px" onclick="showAddClient()">+ Add Client / Property</button>
           </div>
           <div>
@@ -3272,7 +3272,7 @@ function hideClientList() {
   setTimeout(() => {
     const sel = document.getElementById("clientSelect");
     if (sel) sel.style.display = "none";
-  }, 200);
+  }, 180);
 }
 
 function filterClients() {
