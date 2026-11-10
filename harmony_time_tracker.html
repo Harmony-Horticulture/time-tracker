@@ -91,8 +91,19 @@
   }
   button:hover { background: var(--accent-dark); }
   button.secondary { background: #f3f4f6; color: var(--accent-dark); border: 1px solid var(--border); }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .row > * { flex: 1; min-width: 180px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
+  .row > div { flex: 1; min-width: 200px; }
+  label { display: block; font-weight: 600; margin: 0 0 6px; font-size: 0.9rem; }
+  input, select, textarea {
+    font: inherit;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 100%;
+    background: white;
+    box-sizing: border-box;
+  }
+  select[size] { height: auto; max-height: 160px; }
   .btn-row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
   .btn-row button { flex: 0 0 auto; }
   .badge {
@@ -251,7 +262,7 @@
           <div>
             <label>Client <span style="color:var(--danger)">*</span></label>
             <input id="clientSearch" placeholder="Search clients..." oninput="filterClients()" style="margin-bottom:4px">
-            <select id="clientSelect" onchange="onClientChange()" size="6" style="height:auto"></select>
+            <select id="clientSelect" onchange="onClientChange()" size="5" style="height:140px; overflow-y:auto"></select>
             <button class="secondary" style="margin-top:6px" onclick="showAddClient()">+ Add Client / Property</button>
           </div>
           <div>
