@@ -102,8 +102,17 @@
   }
   button:hover { background: var(--accent-dark); }
   button.secondary { background: #f3f4f6; color: var(--accent-dark); border: 1px solid var(--border); }
-  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; align-items: end; }
-  .row > div { min-width: 0; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .form-grid > div { min-width: 0; }
+  @media (max-width: 700px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-grid > div[style*="span 2"] { grid-column: span 1 !important; }
+  }
   label { display: block; font-weight: 600; margin: 0 0 6px; font-size: 0.9rem; }
   input, select, textarea {
     font: inherit;
@@ -269,7 +278,7 @@
     <div id="consultantView">
       <div class="card">
         <h2>New Time Entry</h2>
-        <div class="row">
+        <div class="form-grid">
           <div>
             <label>Client <span style="color:var(--danger)">*</span></label>
             <div style="position:relative">
@@ -297,8 +306,6 @@
             <label>Date</label>
             <input id="entryDate" type="date">
           </div>
-        </div>
-        <div class="row">
           <div>
             <label>Billable Hours (15-min increments)</label>
             <select id="hoursSelect">
@@ -322,7 +329,7 @@
               <option value="8">8.00</option>
             </select>
           </div>
-          <div>
+          <div style="grid-column: span 2">
             <label>Description</label>
             <select id="descSelect"></select>
             <button class="secondary" style="margin-top:6px" onclick="showAddDesc()">+ Add / Request Description</button>
