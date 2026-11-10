@@ -43,10 +43,13 @@
     width: fit-content;
   }
   .sidebar .logo img {
-    height: 80px;
+    height: 72px;
     width: auto;
     display: block;
     margin: 0 auto;
+    background: white;
+    padding: 8px;
+    border-radius: 8px;
   }
   .sidebar nav a, .sidebar button.nav {
     display: block;
@@ -369,6 +372,9 @@
         <div id="reportEntries"></div>
       </div>
     </div>
+
+    <!-- Admin View -->
+    <div id="adminView" class="hidden">
       <div class="card">
         <h2>Admin Dashboard</h2>
         <div class="stats" id="dashboardStats"></div>
@@ -2992,12 +2998,15 @@ function logout() {
 })();
 
 function showAdminDashboard() {
-  document.getElementById("consultantView").classList.add("hidden");
-  document.getElementById("reportsView").classList.add("hidden");
-  document.getElementById("adminView").classList.remove("hidden");
-  renderDashboard();
-  renderPending();
-  renderAllEntries();
+  const cv = document.getElementById("consultantView");
+  const rv = document.getElementById("reportsView");
+  const av = document.getElementById("adminView");
+  if (cv) cv.classList.add("hidden");
+  if (rv) rv.classList.add("hidden");
+  if (av) av.classList.remove("hidden");
+  if (typeof renderDashboard === "function") renderDashboard();
+  if (typeof renderPending === "function") renderPending();
+  if (typeof renderAllEntries === "function") renderAllEntries();
 }
 
 function showAddTime() {
