@@ -2982,13 +2982,6 @@ function editEntry(id) {
   document.getElementById("propertyName").dataset.editingId = id;
   document.getElementById("formMessage").innerHTML = '<span class="success">Editing entry — click Save to update.</span>';
 }
-  const e = data.entries.find(x => x.id === id);
-  if (e) {
-    e.closed = true;
-    saveData();
-    renderAllEntries();
-  }
-}
 
 function toggleAdmin() {
   // kept for compatibility, but not used
