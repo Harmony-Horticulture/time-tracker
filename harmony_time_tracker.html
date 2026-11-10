@@ -34,8 +34,18 @@
     display: flex;
     flex-direction: column;
   }
-  .sidebar .logo { text-align: center; margin-bottom: 32px; }
-  .sidebar .logo img { height: 48px; }
+  .sidebar .logo {
+    text-align: center;
+    margin-bottom: 32px;
+    padding: 12px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+  }
+  .sidebar .logo img {
+    height: 64px;
+    width: auto;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
   .sidebar nav a, .sidebar button.nav {
     display: block;
     width: 100%;
@@ -146,31 +156,32 @@
   .receipt-preview { max-width: 120px; max-height: 80px; border-radius: 4px; margin-top: 4px; }
   /* Sidebar always visible */
   .login-box {
-    max-width: 420px;
-    margin: 80px auto;
+    max-width: 400px;
+    margin: 40px auto;
     background: transparent;
     box-shadow: none;
     border: none;
-    padding: 0;
+    padding: 20px;
   }
-  .login-box label { display: block; margin-top: 16px; font-weight: 600; }
+  .login-box label { display: block; margin-top: 20px; font-weight: 600; font-size: 0.95rem; }
   .login-box input {
     width: 100%;
-    margin-top: 4px;
+    margin-top: 6px;
     display: block;
     border: none;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #ccc;
     border-radius: 0;
     background: transparent;
-    padding: 8px 0;
+    padding: 10px 0;
+    font-size: 1rem;
   }
   .login-box input:focus {
     outline: none;
     border-bottom-color: var(--accent);
   }
-  .login-box .logo-header { flex-direction: column; align-items: center; text-align: center; }
-  .login-box h1 { text-align: center; font-size: 1.8rem; margin: 8px 0 4px; }
-  .login-box p { text-align: center; color: var(--muted); }
+  .login-box .logo-header { flex-direction: column; align-items: center; text-align: center; margin-bottom: 16px; }
+  .login-box h1 { text-align: center; font-size: 1.7rem; margin: 12px 0 4px; }
+  .login-box p { text-align: center; color: var(--muted); font-size: 0.9rem; margin-top: 24px; }
   .error { color: var(--danger); font-size: 0.85rem; }
   .success { color: var(--accent); }
   small { color: var(--muted); }
@@ -2999,12 +3010,6 @@ function createReportFromEntry(id) {
   const e = data.entries.find(x => x.id === id);
   if (!e) return;
   alert(`Report draft started for ${e.clientName} / ${e.property || "property"}.\n\nNotes: ${e.description}\n\n(Full report builder with photos, polish, and PDF coming next.)`);
-}
-  document.getElementById("consultantView").classList.add("hidden");
-  document.getElementById("adminView").classList.remove("hidden");
-  renderDashboard();
-  renderPending();
-  renderAllEntries();
 }
 
 function renderAllEntries() {
