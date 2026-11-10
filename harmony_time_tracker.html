@@ -3,20 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <title>Harmony Horticulture Time Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f7f4;
+    --bg: #FAF7F2;
     --card: #ffffff;
-    --sidebar: #1e3a2f;
-    --sidebar-text: #e8f0ea;
-    --accent: #2d5a45;
-    --accent-dark: #1e3a2f;
-    --accent-light: #4a7c5c;
-    --brown: #2c2416;
-    --muted: #6b7280;
-    --border: #e5e7eb;
+    --sidebar: #5F351B;
+    --sidebar-text: #FAF7F2;
+    --accent: #8AC641;
+    --accent-dark: #5F351B;
+    --accent-light: #a8d86a;
+    --brown: #2A2A28;
+    --muted: #6b6560;
+    --border: #e8e4dc;
   }
+  body {
+    font-family: "Jost", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--brown);
+  }
+  h1, h2 { font-family: "Jost", sans-serif; font-weight: 500; color: var(--accent-dark); }
+  button { background: var(--accent); color: white; border-radius: 6px; }
+  button:hover { background: #76b535; }
+  button.secondary { background: transparent; color: var(--accent-dark); border: 1px solid var(--border); }
+  .sidebar { background: var(--sidebar); }
   body {
     font-family: "Source Sans 3", system-ui, -apple-system, sans-serif;
     background: var(--bg);
