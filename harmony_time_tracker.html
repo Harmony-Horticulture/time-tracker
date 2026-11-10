@@ -283,7 +283,7 @@
             <label>Client <span style="color:var(--danger)">*</span></label>
             <div style="position:relative">
               <input id="clientSearch" placeholder="Search clients..." onfocus="showClientList()" onblur="hideClientList()" oninput="filterClients()" autocomplete="off">
-              <select id="clientSelect" onchange="onClientChange(); hideClientList()" size="5" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:30; background:white; max-height:180px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.18); border-radius:8px"></select>
+              <select id="clientSelect" onchange="onClientChange(); document.getElementById('clientSelect').style.display='none'" size="5" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:30; background:white; max-height:180px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.18); border-radius:8px"></select>
             </div>
             <button class="secondary" style="margin-top:6px" onclick="showAddClient()">+ Add Client / Property</button>
             <div id="addClientForm" class="hidden" style="margin-top:12px; padding:12px; background:#faf7f2; border-radius:8px">
@@ -2756,27 +2756,9 @@ clients: [
                   "Thompson Residence"
             ]
       },
-      {
-            "id": "c325",
-            "name": "Thursday, November 05, 2026 10:24 AM GMT-07:00",
-            "properties": [
-                  "Thursday, November 05, 2026 10:24 AM GMT-07:00"
-            ]
-      },
-      {
-            "id": "c326",
-            "name": "Tiffanie Leyvas",
-            "properties": [
-                  "Tiffanie Leyvas"
-            ]
-      },
-      {
-            "id": "c327",
-            "name": "Todd Bennitt",
-            "properties": [
-                  "Bennitt Residence"
-            ]
-      },
+      
+      
+      
       {
             "id": "c328",
             "name": "Townsend Residence",
@@ -3352,6 +3334,8 @@ function populateFilter() {
 function onClientChange() {
   const cid = document.getElementById("clientSelect").value;
   const client = data.clients.find(c => c.id === cid);
+  if (client) document.getElementById("clientSearch").value = client.name;
+  document.getElementById("clientSelect").style.display = "none";
   const propInput = document.getElementById("propertyName");
   const dl = document.getElementById("propertyList");
   dl.innerHTML = "";
