@@ -196,13 +196,13 @@
         <h2>New Time Entry</h2>
         <div class="row">
           <div>
-            <label>Client</label>
+            <label>Client <span style="color:var(--danger)">*</span></label>
             <select id="clientSelect" onchange="onClientChange()"></select>
             <button class="secondary" style="margin-top:6px" onclick="showAddClient()">+ Add Client / Property</button>
           </div>
           <div>
-            <label>Property Name <span style="color:var(--danger)">*</span></label>
-            <input id="propertyName" placeholder="e.g. O'Malley Residence" list="propertyList">
+            <label>Property Name</label>
+            <input id="propertyName" placeholder="e.g. O'Malley Residence (optional)" list="propertyList">
             <datalist id="propertyList"></datalist>
           </div>
           <div>
@@ -3008,15 +3008,19 @@ function autofillClientFromProperty() {
     clientSel.disabled = false;
     return;
   }
-  for (const c of data.clients) {
-    if (c.properties.some(p => p.toLowerCase() === prop.toLowerCase())) {
-      clientSel.value = c.id;
-      clientSel.disabled = true;   // lock once autofilled
-      return;
-    }
+  // Find all clients that have this property
+  const matches = data.clients.filter(c => c.properties.some(p => p.toLowerCase() === prop.toLowerCase()));
+  if (matches.length === 1) {
+    clientSel.value = matches[0].id;
+    clientSel.disabled = true;
+  } else if (matches.length > 1) {
+    // Multiple clients for this property — leave client selectable but highlight
+    clientSel.disabled = false;
+    // Optionally pre-select first match
+    if (!clientSel.value) clientSel.value = matches[0].id;
+  } else {
+    clientSel.disabled = false;
   }
-  // No match — leave editable
-  clientSel.disabled = false;
 }
 
 function populatePropertyList() {
@@ -3218,8 +3222,8 @@ function saveEntry() {
   const date = document.getElementById("entryDate").value;
   const hours = parseFloat(document.getElementById("hoursSelect").value);
   const desc = document.getElementById("descSelect").value;
-  if (!client || !property || !date || !hours || !desc) {
-    document.getElementById("formMessage").innerHTML = '<span class="error">Client, Property Name, Date, Hours, and Description are required.</span>';
+  if (!client || !date || !hours || !desc) {
+    document.getElementById("formMessage").innerHTML = '<span class="error">Client, Date, Hours, and Description are required.</span>';
     return;
   }
   const editingId = document.getElementById("propertyName").dataset.editingId;
