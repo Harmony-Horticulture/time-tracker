@@ -2991,6 +2991,15 @@ function logout() {
   }
 })();
 
+function showAdminDashboard() {
+  document.getElementById("consultantView").classList.add("hidden");
+  document.getElementById("reportsView").classList.add("hidden");
+  document.getElementById("adminView").classList.remove("hidden");
+  renderDashboard();
+  renderPending();
+  renderAllEntries();
+}
+
 function showAddTime() {
   document.getElementById("consultantView").classList.remove("hidden");
   document.getElementById("adminView").classList.add("hidden");
