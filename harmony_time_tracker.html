@@ -297,6 +297,10 @@
     <!-- Admin View -->
     <div id="adminView" class="hidden">
       <div class="card">
+        <h2>Admin Dashboard</h2>
+        <div class="stats" id="dashboardStats"></div>
+      </div>
+      <div class="card">
         <h2>All Time Entries</h2>
         <div id="allEntriesList"></div>
       </div>
@@ -3160,10 +3164,52 @@ function toggleMaterials() {
 }
 
 function addMaterialRow() {
+  const materials = [
+    "Twist Ties",
+    "Anchors",
+    "Liquid Nails",
+    "Miracle-Gro (green box)",
+    "Rose Miracle Gro (pink)",
+    "AZ Best Citrus Fert",
+    "Jobes Rose",
+    "Scotts Rose",
+    "BioAdvanced 3 in 1",
+    "Langneinte",
+    "Essential Plus (fish)",
+    "MitoGro",
+    "EcoMaxx 3-2-2",
+    "Shade Cloth 50% white per yard",
+    "Mirimichi Green CarbonizPN Soil Enhancer",
+    "Mirimichi Granular",
+    "Aqueduct Flex Granular",
+    "Greening Pins",
+    "Push Pins",
+    "Bonide Sulfur Organic Concentrated Dust Fungicide",
+    "AZ Best Soil Sulfer",
+    "AZ Best KeRex Super Iron Chelate",
+    "Dr. Earth Acid Lovers Fertilizer",
+    "Miracle-Gro Azalea Camellia Rhododendron Fert",
+    "Moisture Aid (rainbow)",
+    "Hydretain ES +",
+    "Hydretain granular",
+    "Worm castings",
+    "Epsom Salt",
+    "Rainbird Tech line 1/2\" .9gph soaker line",
+    "AZ Worm Farm Compost",
+    "Bonide Captain Jack's Neem Oil",
+    "Worm Castings",
+    "Epsoak Ag Epsom Salt /MgSO",
+    "Ewing Irrigation soaker line"
+  ];
   const div = document.createElement("div");
   div.className = "material-item";
+  const options = materials.map(m => `<option value="${m}">${m}</option>`).join("");
   div.innerHTML = `
-    <input placeholder="Material name" class="mat-name">
+    <select class="mat-name" style="flex:2">
+      <option value="">-- Select material --</option>
+      ${options}
+    </select>
+    <input placeholder="Or type custom" class="mat-custom" style="flex:2">
     <select class="mat-qty" style="max-width:90px">
       <option value="0.25">0.25</option>
       <option value="0.5">0.50</option>
@@ -3335,6 +3381,7 @@ function deleteEntry(id) {
 
 function renderDashboard() {
   const stats = document.getElementById("dashboardStats");
+  if (!stats) return;
   const byClient = {};
   let totalHours = 0;
   let totalMaterials = 0;
