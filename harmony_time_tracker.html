@@ -102,8 +102,8 @@
   }
   button:hover { background: var(--accent-dark); }
   button.secondary { background: #f3f4f6; color: var(--accent-dark); border: 1px solid var(--border); }
-  .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
-  .row > div { flex: 1; min-width: 200px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; align-items: end; }
+  .row > div { min-width: 0; }
   label { display: block; font-weight: 600; margin: 0 0 6px; font-size: 0.9rem; }
   input, select, textarea {
     font: inherit;
@@ -277,6 +277,16 @@
               <select id="clientSelect" onchange="onClientChange(); hideClientList()" size="5" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:30; background:white; max-height:180px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.18); border-radius:8px"></select>
             </div>
             <button class="secondary" style="margin-top:6px" onclick="showAddClient()">+ Add Client / Property</button>
+            <div id="addClientForm" class="hidden" style="margin-top:12px; padding:12px; background:#faf7f2; border-radius:8px">
+              <label>Client name</label>
+              <input id="newClientName" placeholder="Property management or main contact">
+              <label>Property last name</label>
+              <input id="newPropertyName" placeholder="e.g. O'Malley (we add 'Residence')">
+              <div class="btn-row" style="margin-top:8px">
+                <button onclick="saveNewClient()">Add</button>
+                <button class="secondary" onclick="document.getElementById('addClientForm').classList.add('hidden')">Cancel</button>
+              </div>
+            </div>
           </div>
           <div>
             <label>Property Name</label>
@@ -3362,18 +3372,27 @@ function onClientChange() {
 }
 
 function showAddClient() {
-  const clientName = prompt("Client name (property management or main contact):");
-  if (!clientName) return;
-  const lastName = prompt("Property last name only (we will append ' Residence'):\nExample: O'Malley → O'Malley Residence");
-  if (!lastName) return;
-  const property = lastName.trim() + " Residence";
+  document.getElementById("addClientForm").classList.remove("hidden");
+  document.getElementById("newClientName").focus();
+}
+
+function saveNewClient() {
+  const clientName = document.getElementById("newClientName").value.trim();
+  const lastName = document.getElementById("newPropertyName").value.trim();
+  if (!clientName || !lastName) {
+    alert("Both client name and property name are required.");
+    return;
+  }
+  const property = lastName + " Residence";
   const id = "c" + Date.now();
-  data.clients.push({ id, name: clientName.trim(), properties: [property] });
+  data.clients.push({ id, name: clientName, properties: [property] });
   saveData();
   populateClients();
   document.getElementById("clientSelect").value = id;
   document.getElementById("propertyName").value = property;
-  alert("Client and property added. You can edit the property name if needed.");
+  document.getElementById("addClientForm").classList.add("hidden");
+  document.getElementById("newClientName").value = "";
+  document.getElementById("newPropertyName").value = "";
 }
 
 function showAddDesc() {
