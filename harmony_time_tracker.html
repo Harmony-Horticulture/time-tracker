@@ -36,22 +36,24 @@
   }
   .sidebar .logo {
     text-align: center;
-    margin: 0 auto 28px;
-    padding: 12px;
+    margin: 8px auto 24px;
+    padding: 8px;
     background: white;
-    border-radius: 12px;
-    width: 160px;
-    height: 160px;
+    border-radius: 10px;
+    width: 140px;
+    height: 100px;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .sidebar .logo img {
-    max-width: 140px;
-    max-height: 140px;
+    max-width: 120px;
+    max-height: 84px;
     width: auto;
     height: auto;
     object-fit: contain;
+    object-position: center;
     display: block;
   }
   .sidebar nav a, .sidebar button.nav {
@@ -3530,6 +3532,20 @@ function saveEntryAndReport() {
   clearForm();
   renderEntries();
   populateFilter();
+
+  // Prompt for report unless they opted out today
+  const skipKey = "hh_skip_report_" + new Date().toISOString().slice(0,10);
+  if (!localStorage.getItem(skipKey)) {
+    setTimeout(() => {
+      const want = confirm("Do you want to create a report for this entry?");
+      if (want) {
+        startNewReport({ clientName: entry.clientName, property: entry.property, description: entry.description });
+      } else {
+        const dontAsk = confirm("Don't ask me this again today?");
+        if (dontAsk) localStorage.setItem(skipKey, "1");
+      }
+    }, 300);
+  }
 }
 
 function renderEntries() {
