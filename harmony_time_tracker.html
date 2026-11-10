@@ -262,8 +262,10 @@
         <div class="row">
           <div>
             <label>Client <span style="color:var(--danger)">*</span></label>
-            <input id="clientSearch" placeholder="Search clients..." onfocus="showClientList()" onblur="hideClientList()" oninput="filterClients()" autocomplete="off">
-            <select id="clientSelect" onchange="onClientChange()" size="6" style="display:none; height:160px; overflow-y:auto; position:absolute; z-index:20; background:white; width:100%; max-width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15)"></select>
+            <div style="position:relative">
+              <input id="clientSearch" placeholder="Search clients..." onfocus="showClientList()" onblur="hideClientList()" oninput="filterClients()" autocomplete="off">
+              <select id="clientSelect" onchange="onClientChange(); hideClientList()" size="5" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:30; background:white; max-height:180px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.18); border-radius:8px"></select>
+            </div>
             <button class="secondary" style="margin-top:6px" onclick="showAddClient()">+ Add Client / Property</button>
           </div>
           <div>
@@ -387,8 +389,11 @@
         <input id="reportContact" placeholder="Contact person">
         <label>Overview / Notes</label>
         <textarea id="reportNotes" placeholder="Dictate or type your observations..."></textarea>
-        <div class="btn-row">
-          <button class="secondary" onclick="startDictation()">🎤 Dictate</button>
+        <div style="display:flex; align-items:center; gap:10px; margin:8px 0">
+          <button type="button" onclick="startDictation()" style="width:44px; height:44px; border-radius:50%; background:#e5e5ea; color:#1c1c1e; border:none; font-size:1.3rem; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer" title="Dictate">
+            🎤
+          </button>
+          <span style="color:#8e8e93; font-size:0.9rem">Tap to dictate</span>
         </div>
         <label>Photos</label>
         <input type="file" id="reportPhotos" accept="image/*" multiple onchange="previewReportPhotos(this)">
@@ -3266,13 +3271,16 @@ function populateClients() {
 
 function showClientList() {
   const sel = document.getElementById("clientSelect");
-  if (sel) sel.style.display = "block";
+  if (sel) {
+    sel.style.display = "block";
+    sel.style.position = "absolute";
+  }
 }
 function hideClientList() {
   setTimeout(() => {
     const sel = document.getElementById("clientSelect");
-    if (sel) sel.style.display = "none";
-  }, 180);
+    if (sel && document.activeElement !== sel) sel.style.display = "none";
+  }, 150);
 }
 
 function filterClients() {
