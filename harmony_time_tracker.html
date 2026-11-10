@@ -37,19 +37,22 @@
   .sidebar .logo {
     text-align: center;
     margin: 0 auto 28px;
-    padding: 16px 8px;
-    background: rgba(255,255,255,0.1);
+    padding: 12px;
+    background: white;
     border-radius: 12px;
-    width: fit-content;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .sidebar .logo img {
-    height: 72px;
+    max-width: 140px;
+    max-height: 140px;
     width: auto;
+    height: auto;
+    object-fit: contain;
     display: block;
-    margin: 0 auto;
-    background: white;
-    padding: 8px;
-    border-radius: 8px;
   }
   .sidebar nav a, .sidebar button.nav {
     display: block;
@@ -340,6 +343,7 @@
 
         <div class="btn-row" style="margin-top:16px">
           <button onclick="saveEntry()">Save Entry</button>
+          <button class="secondary" onclick="saveEntryAndReport()">Save & Add Report</button>
           <button class="secondary" onclick="clearForm()">Clear</button>
         </div>
         <div id="formMessage"></div>
@@ -365,10 +369,36 @@
 
     <!-- Admin View -->
     <div id="reportsView" class="hidden">
-      <h1>Property Reports</h1>
-      <p style="color:var(--muted); margin-top:-8px">Create polished reports from your time entries.</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+        <div>
+          <h1 style="margin:0">Property Reports</h1>
+          <p style="color:var(--muted); margin:4px 0 0">Capture field observations and turn them into polished client reports.</p>
+        </div>
+        <button onclick="startNewReport()">+ New Report</button>
+      </div>
+      <div id="reportForm" class="card hidden">
+        <h2>New Report</h2>
+        <label>Report Type</label>
+        <select id="reportType">
+          <option value="monthly">Monthly Property Care</option>
+          <option value="sitevisit">Site Visit Photo Report</option>
+          <option value="other">Other / Custom</option>
+        </select>
+        <label>Client</label>
+        <input id="reportClient" placeholder="Client name">
+        <label>Property</label>
+        <input id="reportProperty" placeholder="Property name">
+        <label>Contact (optional)</label>
+        <input id="reportContact" placeholder="Contact person">
+        <label>Overview / Notes</label>
+        <textarea id="reportNotes" placeholder="Dictate or type your observations..."></textarea>
+        <div class="btn-row">
+          <button onclick="saveReportDraft()">Save Draft</button>
+          <button class="secondary" onclick="cancelReport()">Cancel</button>
+        </div>
+      </div>
       <div class="card">
-        <p>Select a time entry below and click <strong>Create Report</strong> to start a report pre-filled with the client, property, and work notes.</p>
+        <h2>My Reports</h2>
         <div id="reportEntries"></div>
       </div>
     </div>
@@ -3037,10 +3067,35 @@ function renderReportEntries() {
   `).join("");
 }
 
+function startNewReport(prefill) {
+  document.getElementById("reportsView").classList.remove("hidden");
+  document.getElementById("consultantView").classList.add("hidden");
+  document.getElementById("adminView").classList.add("hidden");
+  document.getElementById("reportForm").classList.remove("hidden");
+  if (prefill) {
+    document.getElementById("reportClient").value = prefill.clientName || "";
+    document.getElementById("reportProperty").value = prefill.property || "";
+    document.getElementById("reportNotes").value = prefill.description || "";
+  } else {
+    document.getElementById("reportClient").value = "";
+    document.getElementById("reportProperty").value = "";
+    document.getElementById("reportNotes").value = "";
+  }
+}
+
+function cancelReport() {
+  document.getElementById("reportForm").classList.add("hidden");
+}
+
+function saveReportDraft() {
+  alert("Report draft saved. (Full polish, photos, and PDF coming next.)");
+  document.getElementById("reportForm").classList.add("hidden");
+}
+
 function createReportFromEntry(id) {
   const e = data.entries.find(x => x.id === id);
   if (!e) return;
-  alert(`Report draft started for ${e.clientName} / ${e.property || "property"}.\n\nNotes: ${e.description}\n\n(Full report builder with photos, polish, and PDF coming next.)`);
+  startNewReport({ clientName: e.clientName, property: e.property, description: e.description });
 }
 
 function renderAllEntries() {
@@ -3164,7 +3219,16 @@ function populateClients() {
   });
 }
 
-function filterClients() {
+function showClientList() {
+  const sel = document.getElementById("clientSelect");
+  if (sel) sel.style.display = "block";
+}
+function hideClientList() {
+  setTimeout(() => {
+    const sel = document.getElementById("clientSelect");
+    if (sel) sel.style.display = "none";
+  }, 200);
+}
   const q = document.getElementById("clientSearch").value.toLowerCase().trim();
   const sel = document.getElementById("clientSelect");
   const current = sel.value;
@@ -3393,7 +3457,13 @@ function clearForm() {
   document.getElementById("formMessage").textContent = "";
 }
 
-function saveEntry() {
+function saveEntryAndReport() {
+  saveEntry();
+  const client = document.getElementById("clientSelect").selectedOptions[0]?.text || "";
+  const property = document.getElementById("propertyName").value;
+  const desc = document.getElementById("descSelect").value;
+  setTimeout(() => startNewReport({ clientName: client, property, description: desc }), 100);
+}
   const clientId = document.getElementById("clientSelect").value;
   const client = data.clients.find(c => c.id === clientId);
   const property = document.getElementById("propertyName").value.trim();
