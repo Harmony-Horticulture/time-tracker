@@ -36,25 +36,15 @@
   }
   .sidebar .logo {
     text-align: center;
-    margin: 8px auto 24px;
+    margin: 12px auto 24px;
     padding: 8px;
-    background: white;
-    border-radius: 10px;
-    width: 140px;
-    height: 100px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: transparent;
   }
   .sidebar .logo img {
-    max-width: 120px;
-    max-height: 84px;
+    height: 64px;
     width: auto;
-    height: auto;
-    object-fit: contain;
-    object-position: center;
     display: block;
+    margin: 0 auto;
   }
   .sidebar nav a, .sidebar button.nav {
     display: block;
@@ -395,6 +385,12 @@
         <input id="reportContact" placeholder="Contact person">
         <label>Overview / Notes</label>
         <textarea id="reportNotes" placeholder="Dictate or type your observations..."></textarea>
+        <div class="btn-row">
+          <button class="secondary" onclick="startDictation()">🎤 Dictate</button>
+        </div>
+        <label>Photos</label>
+        <input type="file" id="reportPhotos" accept="image/*" multiple onchange="previewReportPhotos(this)">
+        <div id="reportPhotoPreviews" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px"></div>
         <div class="btn-row">
           <button onclick="saveReportDraft()">Save Draft</button>
           <button class="secondary" onclick="cancelReport()">Cancel</button>
@@ -3068,6 +3064,40 @@ function renderReportEntries() {
       <button class="secondary" style="float:right" onclick="createReportFromEntry('${e.id}')">Create Report</button>
     </div>
   `).join("");
+}
+
+function startDictation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Dictation is not supported in this browser. Try Chrome.");
+    return;
+  }
+  const rec = new SpeechRecognition();
+  rec.continuous = false;
+  rec.interimResults = false;
+  rec.lang = "en-US";
+  rec.onresult = e => {
+    const text = e.results[0][0].transcript;
+    const notes = document.getElementById("reportNotes");
+    notes.value = (notes.value + " " + text).trim();
+  };
+  rec.onerror = () => alert("Dictation failed. Check microphone permission.");
+  rec.start();
+}
+
+function previewReportPhotos(input) {
+  const container = document.getElementById("reportPhotoPreviews");
+  container.innerHTML = "";
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.createElement("img");
+      img.src = e.target.result;
+      img.style.cssText = "width:80px; height:80px; object-fit:cover; border-radius:6px";
+      container.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function startNewReport(prefill) {
