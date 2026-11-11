@@ -3111,7 +3111,11 @@ function startDictation() {
     const notes = document.getElementById("reportNotes");
     notes.value = (notes.value + " " + text).trim();
   };
-  rec.onerror = () => alert("Dictation failed. Check microphone permission.");
+  rec.onerror = (e) => {
+    if (e.error !== "no-speech" && e.error !== "aborted") {
+      console.log("Dictation error:", e.error);
+    }
+  };
   rec.start();
 }
 
