@@ -409,9 +409,13 @@
           <option value="other">Other / Custom</option>
         </select>
         <label>Client</label>
-        <input id="reportClient" placeholder="Client name">
+        <div style="position:relative">
+          <input id="reportClientSearch" placeholder="Search clients..." onfocus="showReportClientList()" onblur="hideReportClientList()" oninput="filterReportClients()" autocomplete="off">
+          <select id="reportClientSelect" onchange="onReportClientChange()" size="5" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:30; background:white; max-height:160px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.15); border-radius:8px"></select>
+        </div>
         <label>Property</label>
-        <input id="reportProperty" placeholder="Property name">
+        <input id="reportProperty" placeholder="Property name" list="reportPropertyList">
+        <datalist id="reportPropertyList"></datalist>
         <label>Contact (optional)</label>
         <input id="reportContact" placeholder="Contact person">
         <label>Overview / Notes</label>
@@ -3126,17 +3130,53 @@ function previewReportPhotos(input) {
   });
 }
 
-function startNewReport(prefill) {
+function showReportClientList() {
+  populateReportClients();
+  document.getElementById("reportClientSelect").style.display = "block";
+}
+function hideReportClientList() {
+  setTimeout(() => { document.getElementById("reportClientSelect").style.display = "none"; }, 150);
+}
+function filterReportClients() {
+  const q = document.getElementById("reportClientSearch").value.toLowerCase();
+  const sel = document.getElementById("reportClientSelect");
+  sel.innerHTML = "";
+  data.clients.filter(c => !q || c.name.toLowerCase().includes(q)).forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    sel.appendChild(opt);
+  });
+}
+function populateReportClients() {
+  filterReportClients();
+}
+function onReportClientChange() {
+  const cid = document.getElementById("reportClientSelect").value;
+  const client = data.clients.find(c => c.id === cid);
+  if (client) {
+    document.getElementById("reportClientSearch").value = client.name;
+    document.getElementById("reportClientSelect").style.display = "none";
+    const dl = document.getElementById("reportPropertyList");
+    dl.innerHTML = "";
+    client.properties.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p;
+      dl.appendChild(opt);
+    });
+    if (client.properties.length === 1) document.getElementById("reportProperty").value = client.properties[0];
+  }
+}
   document.getElementById("reportsView").classList.remove("hidden");
   document.getElementById("consultantView").classList.add("hidden");
   document.getElementById("adminView").classList.add("hidden");
   document.getElementById("reportForm").classList.remove("hidden");
   if (prefill) {
-    document.getElementById("reportClient").value = prefill.clientName || "";
+    document.getElementById("reportClientSearch").value = prefill.clientName || "";
     document.getElementById("reportProperty").value = prefill.property || "";
     document.getElementById("reportNotes").value = prefill.description || "";
   } else {
-    document.getElementById("reportClient").value = "";
+    document.getElementById("reportClientSearch").value = "";
     document.getElementById("reportProperty").value = "";
     document.getElementById("reportNotes").value = "";
   }
@@ -3147,7 +3187,7 @@ function cancelReport() {
 }
 
 function saveReportDraft() {
-  const client = (document.getElementById("reportClient").value || "Unknown").replace(/[^a-zA-Z0-9]/g, "");
+  const client = (document.getElementById("reportClientSearch").value || "Unknown").replace(/[^a-zA-Z0-9]/g, "");
   const date = new Date().toISOString().slice(0, 10);
   const typeMap = { monthly: "MonthlyPropertyCare", sitevisit: "SiteVisitPhoto", other: "Custom" };
   const type = typeMap[document.getElementById("reportType").value] || "Report";
@@ -3167,7 +3207,7 @@ function saveReportDraft() {
   doc.setFontSize(11);
   doc.setTextColor(42, 42, 40);
   doc.text(`Property: ${property || "—"}`, 20, 45);
-  doc.text(`Client: ${document.getElementById("reportClient").value || "—"}`, 20, 52);
+  doc.text(`Client: ${document.getElementById("reportClientSearch").value || "—"}`, 20, 52);
   doc.text(`Contact: ${contact || "—"}`, 20, 59);
   doc.text(`Date: ${date}`, 20, 66);
   doc.text(`Consultant: ${currentUser || "—"}`, 20, 73);
@@ -3209,7 +3249,7 @@ function saveReportDraft() {
     const body = encodeURIComponent(
       `A new report is ready:\n\n` +
       `Type: ${type}\n` +
-      `Client: ${document.getElementById("reportClient").value}\n` +
+      `Client: ${document.getElementById("reportClientSearch").value}\n` +
       `Property: ${property}\n` +
       `Date: ${date}\n` +
       `Consultant: ${currentUser}\n\n` +
