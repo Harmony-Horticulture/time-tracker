@@ -3609,6 +3609,44 @@ function saveEntry() {
   data.entries.push(entry);
   saveData();
   document.getElementById("formMessage").innerHTML = '<span class="success">Entry saved.</span>';
+
+  // If a receipt was uploaded, send it to Drive and email accounting
+  if (currentReceiptData) {
+    const scriptUrl = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz6MktUw5Vfyd77Gv0cl38iGlxHfVWO4Xf9_dneWQ8NlUAzsMMKunAjQP8IxIOeNFJOpA/exec";
+    fetch(scriptUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        image: currentReceiptData,
+        client: entry.clientName,
+        date: entry.date
+      })
+    })
+    .then(r => r.json())
+    .then(res => {
+      const driveLink = res.success ? res.url : "(upload failed)";
+      const subject = encodeURIComponent(`Receipt for ${entry.clientName} — ${entry.date}`);
+      const body = encodeURIComponent(
+        `A receipt needs to be added for the following visit:\n\n` +
+        `Consultant: ${entry.user}\n` +
+        `Client: ${entry.clientName}\n` +
+        `Property: ${entry.property || "—"}\n` +
+        `Date: ${entry.date}\n` +
+        `Hours: ${entry.hours}\n` +
+        `Description: ${entry.description}\n` +
+        (entry.materials.length ? `Materials: ${entry.materials.map(m => m.name + " x" + m.qty).join(", ")}\n` : "") +
+        `\nReceipt: ${driveLink}\n\n` +
+        `Please add this receipt to the client record.`
+      );
+      window.open(`mailto:accounting@harmonyhorticulture.com?subject=${subject}&body=${body}`);
+    })
+    .catch(() => {
+      alert("Receipt saved locally, but Drive upload failed. Email will open without the link.");
+      const subject = encodeURIComponent(`Receipt for ${entry.clientName} — ${entry.date}`);
+      const body = encodeURIComponent(`Receipt upload failed. Check the time tracker for the image.\n\nClient: ${entry.clientName}\nDate: ${entry.date}`);
+      window.open(`mailto:accounting@harmonyhorticulture.com?subject=${subject}&body=${body}`);
+    });
+  }
+
   clearForm();
   renderEntries();
   populateFilter();
