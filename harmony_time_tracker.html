@@ -219,7 +219,7 @@
   .success { color: var(--accent); }
   small { color: var(--muted); }
 </style>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div class="sidebar">
@@ -3152,7 +3152,78 @@ function saveReportDraft() {
   const typeMap = { monthly: "MonthlyPropertyCare", sitevisit: "SiteVisitPhoto", other: "Custom" };
   const type = typeMap[document.getElementById("reportType").value] || "Report";
   const filename = `${client}_${date}_${type}.pdf`;
-  alert(`Report draft saved as:\n${filename}\n\n(Full polish, photos, and PDF coming next.)`);
+  const notes = document.getElementById("reportNotes").value;
+  const property = document.getElementById("reportProperty").value;
+  const contact = document.getElementById("reportContact").value;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFont("helvetica");
+  doc.setFontSize(18);
+  doc.setTextColor(95, 53, 27);
+  doc.text("Harmony Horticulture", 20, 20);
+  doc.setFontSize(14);
+  doc.text(document.getElementById("reportType").selectedOptions[0].text, 20, 30);
+  doc.setFontSize(11);
+  doc.setTextColor(42, 42, 40);
+  doc.text(`Property: ${property || "—"}`, 20, 45);
+  doc.text(`Client: ${document.getElementById("reportClient").value || "—"}`, 20, 52);
+  doc.text(`Contact: ${contact || "—"}`, 20, 59);
+  doc.text(`Date: ${date}`, 20, 66);
+  doc.text(`Consultant: ${currentUser || "—"}`, 20, 73);
+  doc.setFontSize(12);
+  doc.text("Notes", 20, 88);
+  doc.setFontSize(10);
+  const split = doc.splitTextToSize(notes || "(No notes)", 170);
+  doc.text(split, 20, 96);
+
+  // Add photos if any
+  const previews = document.querySelectorAll("#reportPhotoPreviews img");
+  let y = 96 + split.length * 5 + 10;
+  previews.forEach((img, i) => {
+    if (y > 250) { doc.addPage(); y = 20; }
+    try { doc.addImage(img.src, "JPEG", 20, y, 60, 45); } catch(e) {}
+    y += 50;
+  });
+
+  doc.save(filename);
+
+  // Upload photos to Reports folder and email
+  const scriptUrl = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz6MktUw5Vfyd77Gv0cl38iGlxHfVWO4Xf9_dneWQ8NlUAzsMMKunAjQP8IxIOeNFJOpA/exec";
+  const photoPromises = Array.from(previews).map((img, i) => {
+    return fetch(scriptUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        image: img.src,
+        client: client,
+        date: date,
+        folder: "reports",
+        name: `${client}_${date}_Photo${i+1}.jpg`
+      })
+    }).then(r => r.json()).catch(() => ({ success: false }));
+  });
+
+  Promise.all(photoPromises).then(results => {
+    const links = results.filter(r => r.success).map(r => r.url).join("\n");
+    const subject = encodeURIComponent(`${type} Report — ${client} — ${date}`);
+    const body = encodeURIComponent(
+      `A new report is ready:\n\n` +
+      `Type: ${type}\n` +
+      `Client: ${document.getElementById("reportClient").value}\n` +
+      `Property: ${property}\n` +
+      `Date: ${date}\n` +
+      `Consultant: ${currentUser}\n\n` +
+      `Notes:\n${notes}\n\n` +
+      (links ? `Photos:\n${links}\n\n` : "") +
+      `PDF has been downloaded. Google Doc version coming soon.`
+    );
+    const consultantEmail = (data.users[currentUser]?.email || "").trim();
+    const to = consultantEmail 
+      ? `accounting@harmonyhorticulture.com,${consultantEmail}` 
+      : "accounting@harmonyhorticulture.com";
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`);
+  });
+
   document.getElementById("reportForm").classList.add("hidden");
 }
 
