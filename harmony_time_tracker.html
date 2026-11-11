@@ -3167,6 +3167,8 @@ function onReportClientChange() {
     if (client.properties.length === 1) document.getElementById("reportProperty").value = client.properties[0];
   }
 }
+
+function startNewReport(prefill) {
   document.getElementById("reportsView").classList.remove("hidden");
   document.getElementById("consultantView").classList.add("hidden");
   document.getElementById("adminView").classList.add("hidden");
