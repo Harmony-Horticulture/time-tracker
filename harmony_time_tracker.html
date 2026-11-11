@@ -3147,7 +3147,12 @@ function cancelReport() {
 }
 
 function saveReportDraft() {
-  alert("Report draft saved. (Full polish, photos, and PDF coming next.)");
+  const client = (document.getElementById("reportClient").value || "Unknown").replace(/[^a-zA-Z0-9]/g, "");
+  const date = new Date().toISOString().slice(0, 10);
+  const typeMap = { monthly: "MonthlyPropertyCare", sitevisit: "SiteVisitPhoto", other: "Custom" };
+  const type = typeMap[document.getElementById("reportType").value] || "Report";
+  const filename = `${client}_${date}_${type}.pdf`;
+  alert(`Report draft saved as:\n${filename}\n\n(Full polish, photos, and PDF coming next.)`);
   document.getElementById("reportForm").classList.add("hidden");
 }
 
