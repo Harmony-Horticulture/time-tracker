@@ -2946,7 +2946,7 @@ function saveData() {
 
 function login() {
   try {
-    const name = document.getElementById("loginName").value.trim();
+    const name = document.getElementById("loginName").value.trim().replace(/['’]/g, "");
     const pass = document.getElementById("loginPass").value.trim().replace(/[\u2010-\u2015]/g, "-"); // normalize hyphens
     const email = (document.getElementById("loginEmail")?.value || "").trim().toLowerCase().replace(/\s+/g, "");
     const errEl = document.getElementById("loginError");
