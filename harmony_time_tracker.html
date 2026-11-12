@@ -28,7 +28,7 @@
   button.secondary { background: transparent; color: var(--accent-dark); border: 1px solid var(--border); }
   .sidebar { background: var(--sidebar); }
   body {
-    font-family: "Source Sans 3", system-ui, -apple-system, sans-serif;
+    font-family: "Jost", system-ui, sans-serif;
     background: var(--bg);
     color: var(--brown);
     margin: 0;
@@ -82,7 +82,7 @@
     overflow-y: auto;
   }
   .container { max-width: 900px; margin: 0; }
-  h1, h2 { font-family: "Libre Baskerville", Georgia, serif; color: var(--accent-dark); margin-top: 0; }
+  h1, h2 { font-family: "Jost", sans-serif; font-weight: 500; color: var(--accent-dark); margin-top: 0; }
   .card {
     background: var(--card);
     border-radius: 16px;
@@ -141,7 +141,7 @@
     border: none;
     cursor: pointer;
     font-weight: 600;
-    font-family: inherit;
+  input, select, textarea { font-family: "Jost", system-ui, sans-serif; }
     width: auto;
     padding: 10px 16px;
     border-radius: 6px;
@@ -168,8 +168,8 @@
     border: 1px solid #e8f5e9;
   }
   .stat-box { background: #f1f8e9; padding: 12px; border-radius: 8px; border-left: 4px solid var(--accent); }
-  .stat-box h3 { margin: 0 0 4px; font-size: 0.85rem; color: var(--muted); font-family: "Source Sans 3", sans-serif; }
-  .stat-box .num { font-size: 1.6rem; font-weight: 700; color: var(--accent-dark); font-family: "Libre Baskerville", serif; }
+  .stat-box h3 { margin: 0 0 4px; font-size: 0.85rem; color: var(--muted); font-family: "Jost", sans-serif; }
+  .stat-box .num { font-size: 1.6rem; font-weight: 700; color: var(--accent-dark); font-family: "Jost", sans-serif; }
   .entry {
     border-bottom: 1px solid var(--border);
     padding: 12px 0;
@@ -464,6 +464,7 @@
       <div class="card">
         <h2>Monthly Export</h2>
         <button onclick="exportAllExcel()">Download Full Month (all people + Materials tab)</button>
+        <button onclick="loadDemoData()" style="margin-left:8px">Load Demo Data</button>
         <p><small>Each person gets their own tab. Materials are summarized by client on a separate tab.</small></p>
       </div>
     </div>
@@ -4000,7 +4001,21 @@ function exportMyJSON() {
   downloadFile(JSON.stringify(payload, null, 2), `${currentUser}_data.json`, "application/json");
 }
 
-function exportAllExcel() {
+function loadDemoData() {
+  if (!confirm("Load sample time entries and reports for demo?")) return;
+  const demoEntries = [
+    { id: "demo1", user: "Krista OMalley", clientId: "c4", clientName: "Adelson Residence", property: "Adelson Residence", date: "2026-11-10", hours: 1.5, description: "Tree health assessment", siteMinimum: true, origination: false, oneTime: false, materials: [{name: "Miracle-Gro (green box)", qty: 1, price: 18, total: 18}], receipt: null, createdAt: new Date().toISOString() },
+    { id: "demo2", user: "Tessa Steinberg", clientId: "c5", clientName: "Aviano", property: "Aviano", date: "2026-11-09", hours: 2, description: "Irrigation inspection", siteMinimum: false, origination: true, oneTime: false, materials: [], receipt: null, createdAt: new Date().toISOString() },
+    { id: "demo3", user: "Casey Johnson", clientId: "c10", clientName: "Billingsley Residence", property: "Billingsley Residence", date: "2026-11-08", hours: 1, description: "Pest identification", siteMinimum: false, origination: false, oneTime: true, materials: [{name: "Bonide Captain Jack's Neem Oil", qty: 1, price: 22, total: 22}], receipt: null, createdAt: new Date().toISOString() },
+    { id: "demo4", user: "Krista OMalley", clientId: "c12", clientName: "Camelback Golf Club", property: "Camelback Golf Club", date: "2026-11-07", hours: 3, description: "Monthly property care", siteMinimum: true, origination: false, oneTime: false, materials: [], receipt: null, createdAt: new Date().toISOString() },
+    { id: "demo5", user: "Tessa Steinberg", clientId: "c15", clientName: "Desert Mountain", property: "Desert Mountain", date: "2026-11-06", hours: 1.25, description: "Soil moisture check", siteMinimum: false, origination: false, oneTime: false, materials: [], receipt: null, createdAt: new Date().toISOString() }
+  ];
+  data.entries = data.entries.filter(e => !e.id.startsWith("demo")).concat(demoEntries);
+  saveData();
+  alert("Demo data loaded. Switch to Admin Dashboard or download Excel to see it.");
+  if (isAdmin) renderAllEntries();
+  renderEntries();
+}
   if (typeof XLSX === "undefined") {
     alert("Excel library not loaded. Check internet connection or open the file with the CDN available.");
     return;
