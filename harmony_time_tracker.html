@@ -4020,6 +4020,11 @@ function loadDemoData() {
     alert("Excel library not loaded. Check internet connection or open the file with the CDN available.");
     return;
   }
+function exportAllExcel() {
+  if (typeof XLSX === "undefined") {
+    alert("Excel library not loaded. Check internet connection or open the file with the CDN available.");
+    return;
+  }
   const byUser = {};
   data.entries.forEach(e => {
     if (!byUser[e.user]) byUser[e.user] = [];
