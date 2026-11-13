@@ -3214,28 +3214,54 @@ function downloadReportPDF(id) {
   if (!r) return;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  doc.setFont("helvetica");
+  // Header bar
+  doc.setFillColor(95, 53, 27);
+  doc.rect(0, 0, 210, 28, "F");
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
+  doc.text("HARMONY HORTICULTURE", 14, 12);
+  doc.setFontSize(9);
+  doc.setTextColor(138, 198, 65);
+  doc.text("Expert Analysis. Actionable Results.", 14, 20);
+  // Title
   doc.setTextColor(95, 53, 27);
-  doc.text("Harmony Horticulture", 20, 20);
-  doc.setFontSize(13);
-  doc.text(r.typeLabel || r.type, 20, 30);
+  doc.setFontSize(14);
+  doc.text(r.typeLabel || r.type, 14, 40);
+  // Meta
   doc.setFontSize(10);
   doc.setTextColor(42, 42, 40);
-  doc.text(`Client: ${r.clientName}`, 20, 42);
-  doc.text(`Property: ${r.property || "—"}`, 20, 48);
-  doc.text(`Date: ${r.date}`, 20, 54);
-  doc.text(`Consultant: ${r.user}`, 20, 60);
-  doc.setFontSize(11);
-  doc.text("Notes", 20, 74);
-  const split = doc.splitTextToSize(r.notes || "(No notes)", 170);
-  doc.text(split, 20, 82);
-  let y = 82 + split.length * 5 + 8;
-  (r.photos || []).forEach(src => {
-    if (y > 250) { doc.addPage(); y = 20; }
-    try { doc.addImage(src, "JPEG", 20, y, 60, 45); } catch(e) {}
-    y += 50;
-  });
+  doc.text(`Client: ${r.clientName}`, 14, 50);
+  doc.text(`Property: ${r.property || "—"}`, 14, 56);
+  doc.text(`Date: ${r.date}`, 14, 62);
+  doc.text(`Consultant: ${r.user}`, 14, 68);
+  // Notes
+  doc.setFontSize(12);
+  doc.setTextColor(95, 53, 27);
+  doc.text("Notes", 14, 80);
+  doc.setFontSize(10);
+  doc.setTextColor(42, 42, 40);
+  const split = doc.splitTextToSize(r.notes || "(No notes)", 180);
+  doc.text(split, 14, 88);
+  let y = 88 + split.length * 5 + 6;
+  // Photos
+  if (r.photos && r.photos.length) {
+    doc.setFontSize(12);
+    doc.setTextColor(95, 53, 27);
+    doc.text("Site Photos", 14, y);
+    y += 6;
+    r.photos.forEach(src => {
+      if (y > 240) { doc.addPage(); y = 20; }
+      try { doc.addImage(src, "JPEG", 14, y, 80, 55); } catch(e) {}
+      y += 60;
+    });
+  }
+  // Footer
+  doc.setDrawColor(233, 30, 99);
+  doc.setLineWidth(0.5);
+  doc.line(14, 275, 196, 275);
+  doc.setFontSize(8);
+  doc.setTextColor(42, 42, 40);
+  doc.text("6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251  •  602-237-6474  •  harmonyhorticulture.com", 105, 282, { align: "center" });
   doc.save(`${r.clientName.replace(/[^a-zA-Z0-9]/g,"")}_${r.date}_${r.type}.pdf`);
 }
 
@@ -4121,9 +4147,9 @@ function loadDemoData() {
   data.entries = data.entries.filter(e => !e.id.startsWith("demo")).concat(demoEntries);
   if (!data.reports) data.reports = [];
   const demoReports = [
-    { id: "rdemo1", user: "Krista OMalley", clientName: "Adelson Residence", property: "Adelson Residence", type: "MonthlyPropertyCare", typeLabel: "Monthly Property Care", date: "2026-11-10", notes: "Overall the landscape is performing well. The Arizona ash shows some canopy stress and nutsedge is emerging in the front Bermuda. Recommend diagnostic on the tree and a timed nutsedge treatment in 3-4 weeks.", photos: [], createdAt: new Date().toISOString() },
-    { id: "rdemo2", user: "Tessa Steinberg", clientName: "Aviano", property: "Aviano", type: "SiteVisitPhoto", typeLabel: "Site Visit Photo Report", date: "2026-11-09", notes: "Irrigation inspection complete. East and south beds have good coverage. West zone is running long — recommend 15% reduction in runtime. No pest issues observed.", photos: [], createdAt: new Date().toISOString() },
-    { id: "rdemo3", user: "Casey Johnson", clientName: "Billingsley Residence", property: "Billingsley Residence", type: "MonthlyPropertyCare", typeLabel: "Monthly Property Care", date: "2026-11-08", notes: "Pest identification visit. Found early signs of scale on the citrus. Applied neem oil treatment. Recommend follow-up in 14 days.", photos: [], createdAt: new Date().toISOString() }
+    { id: "rdemo1", user: "Krista OMalley", clientName: "Adelson Residence", property: "Adelson Residence", type: "MonthlyPropertyCare", typeLabel: "Monthly Property Care", date: "2026-11-10", notes: "Thank you for the opportunity to walk the property today. Overall the landscape is performing well for mid-November. Turf density is good in full-sun areas and most shrubs are holding color.\n\nObservations:\n- Arizona ash in the front yard shows progressive canopy decline with yellowing and tip dieback. Recommend immediate diagnostic assessment.\n- Nutsedge is emerging in scattered patches in the front Bermuda. Plants are still young — a timed treatment in 3-4 weeks will be most effective.\n\nRecommendations:\n1. Schedule tree diagnostic within 7 days.\n2. Apply nutsedge treatment in 3-4 weeks.\n3. Continue monthly monitoring through winter.", photos: ["https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi6E_EXXp4RqpDeCLtIwFjhh-HBqfJDo9hvepSSGXL6Sz10wcqPzzJuDPAa8c2duZCvw9NXEMAn_yr6X-RiUMJzvdh2KxHlw2vq-AczfnS9lLs4yZ03JVlvhT0L4EN0EX6h1AUV3H6W1_NU/s1600/ash+tree+yellowing+%25285%2529.JPG"], createdAt: new Date().toISOString() },
+    { id: "rdemo2", user: "Tessa Steinberg", clientName: "Aviano", property: "Aviano", type: "SiteVisitPhoto", typeLabel: "Site Visit Photo Report", date: "2026-11-09", notes: "Irrigation inspection complete. East and south beds have adequate drip coverage with emitters at most shrubs. The west zone appears to be running longer than needed based on surface soil moisture.\n\nRecommend a 15% reduction in runtime on the west zone for the next two weeks, then reassess. No pest issues observed during this visit.", photos: ["https://chicagolandscapelv.com/wp-content/uploads/2024/01/drip-sprinkler_drip-irrigation_las-vegas-708x480.jpg"], createdAt: new Date().toISOString() },
+    { id: "rdemo3", user: "Casey Johnson", clientName: "Billingsley Residence", property: "Billingsley Residence", type: "MonthlyPropertyCare", typeLabel: "Monthly Property Care", date: "2026-11-08", notes: "Pest identification visit. Found early signs of scale on the citrus trees along the south fence. Applied Bonide Captain Jack's Neem Oil treatment to affected areas.\n\nRecommend follow-up inspection in 14 days to assess treatment effectiveness. Continue monitoring for any spread to adjacent plantings.", photos: [], createdAt: new Date().toISOString() }
   ];
   data.reports = data.reports.filter(r => !r.id.startsWith("rdemo")).concat(demoReports);
   saveData();
