@@ -3213,31 +3213,38 @@ function startNewReport(prefill) {
 function downloadReportDOC(id) {
   const r = (data.reports || []).find(x => x.id === id);
   if (!r) return;
+  const photosHtml = (r.photos || []).map((src, i) => 
+    `<div style="margin:16px 0; page-break-inside:avoid">
+      <img src="${src}" style="max-width:480px; border:1px solid #ddd">
+      <p style="font-size:9pt; color:#6b6560; margin:4px 0 0">Figure ${i+1}. Site photo.</p>
+    </div>`
+  ).join("");
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
   <head><meta charset="utf-8"><title>${r.typeLabel}</title>
   <style>
-    body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 40px; }
-    h1 { color: #5F351B; font-size: 22pt; margin-bottom: 4px; }
-    .tagline { color: #8AC641; font-style: italic; margin-top: 0; }
-    h2 { color: #5F351B; font-size: 16pt; }
-    h3 { color: #5F351B; font-size: 13pt; border-bottom: 1px solid #E91E63; padding-bottom: 4px; }
-    .meta { margin: 12px 0; }
-    .footer { margin-top: 40px; border-top: 2px solid #E91E63; padding-top: 8px; font-size: 9pt; text-align: center; color: #6b6560; }
+    body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 50px 60px; line-height: 1.4; }
+    h1 { color: #5F351B; font-size: 18pt; margin: 0 0 2px; font-weight: 500; }
+    .tagline { color: #8AC641; font-style: italic; font-size: 10pt; margin: 0 0 16px; }
+    h2 { color: #5F351B; font-size: 14pt; margin: 18px 0 8px; font-weight: 500; }
+    h3 { color: #5F351B; font-size: 12pt; margin: 14px 0 6px; font-weight: 500; }
+    .meta { font-size: 11pt; margin: 8px 0 16px; }
+    .meta b { color: #5F351B; }
+    .notes { font-size: 11pt; }
+    .footer { margin-top: 30px; border-top: 2px solid #E91E63; padding-top: 8px; font-size: 8pt; text-align: center; color: #6b6560; }
   </style></head>
   <body>
-    <h1>Harmony Horticulture</h1>
+    <h1>HARMONY HORTICULTURE</h1>
     <p class="tagline">Expert Analysis. Actionable Results.</p>
     <h2>${r.typeLabel || r.type}</h2>
     <div class="meta">
-      <b>Client:</b> ${r.clientName}<br>
       <b>Property:</b> ${r.property || "—"}<br>
+      <b>Client:</b> ${r.clientName}<br>
       <b>Date:</b> ${r.date}<br>
       <b>Consultant:</b> ${r.user}
     </div>
-    <h3>Notes</h3>
-    <p>${(r.notes || "").replace(/\n/g, "<br>")}</p>
-    ${(r.photos || []).length ? "<h3>Site Photos</h3>" : ""}
-    ${(r.photos || []).map(src => `<p><img src="${src}" style="max-width:420px; border:1px solid #ddd"></p>`).join("")}
+    <h3>Overview</h3>
+    <div class="notes">${(r.notes || "").replace(/\n/g, "<br>")}</div>
+    ${photosHtml ? '<h3>Site Photos</h3>' + photosHtml : ''}
     <div class="footer">
       6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>
       602-237-6474 &bull; harmonyhorticulture.com
