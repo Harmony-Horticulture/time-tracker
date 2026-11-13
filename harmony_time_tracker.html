@@ -4119,10 +4119,18 @@ function loadDemoData() {
     { id: "demo5", user: "Tessa Steinberg", clientId: "c15", clientName: "Desert Mountain", property: "Desert Mountain", date: "2026-11-06", hours: 1.25, description: "Soil moisture check", siteMinimum: false, origination: false, oneTime: false, materials: [], receipt: null, createdAt: new Date().toISOString() }
   ];
   data.entries = data.entries.filter(e => !e.id.startsWith("demo")).concat(demoEntries);
+  if (!data.reports) data.reports = [];
+  const demoReports = [
+    { id: "rdemo1", user: "Krista OMalley", clientName: "Adelson Residence", property: "Adelson Residence", type: "MonthlyPropertyCare", typeLabel: "Monthly Property Care", date: "2026-11-10", notes: "Overall the landscape is performing well. The Arizona ash shows some canopy stress and nutsedge is emerging in the front Bermuda. Recommend diagnostic on the tree and a timed nutsedge treatment in 3-4 weeks.", photos: [], createdAt: new Date().toISOString() },
+    { id: "rdemo2", user: "Tessa Steinberg", clientName: "Aviano", property: "Aviano", type: "SiteVisitPhoto", typeLabel: "Site Visit Photo Report", date: "2026-11-09", notes: "Irrigation inspection complete. East and south beds have good coverage. West zone is running long — recommend 15% reduction in runtime. No pest issues observed.", photos: [], createdAt: new Date().toISOString() },
+    { id: "rdemo3", user: "Casey Johnson", clientName: "Billingsley Residence", property: "Billingsley Residence", type: "MonthlyPropertyCare", typeLabel: "Monthly Property Care", date: "2026-11-08", notes: "Pest identification visit. Found early signs of scale on the citrus. Applied neem oil treatment. Recommend follow-up in 14 days.", photos: [], createdAt: new Date().toISOString() }
+  ];
+  data.reports = data.reports.filter(r => !r.id.startsWith("rdemo")).concat(demoReports);
   saveData();
-  alert("Demo data loaded. Switch to Admin Dashboard or download Excel to see it.");
+  alert("Demo data loaded. Go to Reports to download sample PDFs and DOCs.");
   if (isAdmin) renderAllEntries();
   renderEntries();
+  renderReportEntries();
 }
 
 function exportAllExcel() {
