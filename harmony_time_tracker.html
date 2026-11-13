@@ -3256,9 +3256,11 @@ function downloadReportDOC(id) {
     "<p style='text-align:center; margin:12px 0 4px'><img src='" + src + "' style='max-width:380px; border:1px solid #ddd'></p>" +
     "<p style='text-align:center; font-size:9pt; color:#6b6560; margin:0 0 16px'>Figure " + (i+1) + ". Site photo.</p>"
   ).join("");
-  let html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>";
+  let html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>";
   html += "<head><meta charset='utf-8'><title>" + (r.typeLabel || "Report") + "</title>";
-  html += "<style>body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 40px 50px; line-height: 1.5; font-size: 11pt; } ";
+  html += "<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->";
+  html += "<style>@page { margin: 0.6in 0.7in 0.8in 0.7in; } ";
+  html += "body { font-family: Calibri, sans-serif; color: #2A2A28; line-height: 1.5; font-size: 11pt; } ";
   html += "h1 { color: #5F351B; font-size: 16pt; margin: 12px 0 6px; font-weight: 500; } ";
   html += ".tagline { color: #8AC641; font-style: italic; font-size: 9pt; margin: 2px 0 14px; } ";
   html += "h2 { color: #5F351B; font-size: 13pt; margin: 16px 0 6px; font-weight: 500; } ";
@@ -3266,8 +3268,13 @@ function downloadReportDOC(id) {
   html += ".meta b { color: #5F351B; } ";
   html += ".footer { margin-top: 24px; border-top: 2px solid #E91E63; padding-top: 6px; font-size: 8pt; text-align: center; color: #6b6560; }</style></head>";
   html += "<body>";
+  html += "<div style='mso-element:header' id='h1'>";
   if (logo) html += "<p style='margin:0 0 4px'><img src='" + logo + "' style='width:80px; height:auto'></p>";
   html += "<p class='tagline'>Expert Analysis. Actionable Results.</p>";
+  html += "</div>";
+  html += "<div style='mso-element:footer' id='f1'>";
+  html += "<div class='footer'>6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>602-237-6474 &bull; harmonyhorticulture.com</div>";
+  html += "</div>";
   html += "<h1>" + (r.typeLabel || r.type) + "</h1>";
   html += "<div class='meta'><b>Property:</b> " + (r.property || "—") + "<br>";
   html += "<b>Client:</b> " + r.clientName + "<br>";
@@ -3276,7 +3283,6 @@ function downloadReportDOC(id) {
   html += "<h2>Overview</h2>";
   html += "<div>" + (r.notes || "").replace(/\n/g, "<br>") + "</div>";
   if (photosHtml) html += "<h2>Site Photos</h2>" + photosHtml;
-  html += "<div class='footer'>6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>602-237-6474 &bull; harmonyhorticulture.com</div>";
   html += "</body></html>";
   const blob = new Blob([html], { type: "application/msword" });
   const a = document.createElement("a");
