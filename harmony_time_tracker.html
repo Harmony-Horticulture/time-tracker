@@ -32,4 +32,8 @@ function downloadReportDOC(id) {
   html += "\x3cdiv class='footer'\x3e6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251\x3cbr\x3e602-237-6474 &bull; harmonyhorticulture.com\x3c/div\x3e";
   html += "\x3c/body\x3e\x3c/html\x3e";
   var blob = new Blob([html], { type: "application/msword" });
-  var a = 
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = r.clientName.replace(/[^a-zA-Z0-9]/g, "") + "_" + r.date + "_" + r.type + ".doc";
+  a.click();
+}
