@@ -1,39 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harmony Horticulture Time Tracker</title>
+<link rel="icon" href="favicon.png">
+<style>
+  body { font-family: Calibri, sans-serif; background: #f3efe6; color: #24392c; margin: 0; }
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 200px; background: #24392c; color: #f3efe6; padding: 20px; }
+  .main { margin-left: 220px; padding: 20px; }
+  button { background: #3e5c48; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+  button.secondary { background: #6b6560; }
+  input, select, textarea { padding: 6px; margin: 4px 0; border: 1px solid #ccc; border-radius: 4px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h2>Harmony</h2>
+  <p id="userName">Not logged in</p>
+  <button onclick="showLogin()">Login</button>
+  <button onclick="showAddTime()">Add Time</button>
+  <button onclick="showReports()">Reports</button>
+  <button onclick="loadDemo()">Load Demo</button>
+</div>
+<div class="main">
+  <div id="loginBox" class="hidden">
+    <h3>Login</h3>
+    <input id="loginEmail" placeholder="Email"><br>
+    <input id="loginPin" type="password" placeholder="PIN"><br>
+    <button onclick="login()">Login</button>
+  </div>
+  <div id="addTimeBox" class="hidden">
+    <h3>Add Time</h3>
+    <input id="clientName" placeholder="Client"><br>
+    <input id="property" placeholder="Property"><br>
+    <input id="date" type="date"><br>
+    <input id="hours" type="number" step="0.25" placeholder="Hours"><br>
+    <textarea id="notes" placeholder="Notes"></textarea><br>
+    <button onclick="saveEntry()">Save</button>
+  </div>
+  <div id="reportsBox" class="hidden">
+    <h3>Reports</h3>
+    <div id="reportList"></div>
+  </div>
+  <div id="entriesList"></div>
+</div>
+<script>
+const data = { users: {}, entries: [], reports: [] };
+const ADMIN = "accounting@harmonyhorticulture.com";
+
+function showLogin() { document.getElementById("loginBox").classList.remove("hidden"); }
+function showAddTime() { document.getElementById("addTimeBox").classList.remove("hidden"); }
+function showReports() { renderReports(); document.getElementById("reportsBox").classList.remove("hidden"); }
+
+function login() {
+  const email = document.getElementById("loginEmail").value.trim();
+  const pin = document.getElementById("loginPin").value.trim();
+  if (!email || !pin) return alert("Enter email and PIN");
+  data.users[email] = { pin, isAdmin: email === ADMIN };
+  localStorage.setItem("hh_data", JSON.stringify(data));
+  document.getElementById("userName").textContent = email;
+  document.getElementById("loginBox").classList.add("hidden");
+}
+
+function saveEntry() {
+  const entry = {
+    id: Date.now().toString(),
+    user: document.getElementById("userName").textContent,
+    client: document.getElementById("clientName").value,
+    property: document.getElementById("property").value,
+    date: document.getElementById("date").value,
+    hours: document.getElementById("hours").value,
+    notes: document.getElementById("notes").value
+  };
+  data.entries.push(entry);
+  localStorage.setItem("hh_data", JSON.stringify(data));
+  alert("Saved");
+  renderEntries();
+}
+
+function renderEntries() {
+  const list = document.getElementById("entriesList");
+  list.innerHTML = data.entries.map(e => `<p>${e.date} — ${e.client} — ${e.hours} hrs</p>`).join("");
+}
+
+function renderReports() {
+  const list = document.getElementById("reportList");
+  list.innerHTML = data.reports.map(r => 
+    `<div><b>${r.clientName}</b> — ${r.date} <button class="secondary" onclick="downloadReportDOC('${r.id}')">DOC</button></div>`
+  ).join("");
+}
+
 function downloadReportDOC(id) {
-  var r = (data.reports || []).find(function(x) { return x.id === id; });
+  var r = data.reports.find(function(x) { return x.id === id; });
   if (!r) return;
-  var logo = document.querySelector("img[src*='logo']");
-  var logoSrc = logo ? logo.src : "";
-  var photosHtml = "";
-  if (r.photos && r.photos.length) {
-    r.photos.forEach(function(src, i) {
-      photosHtml += "<p style='margin:12px 0 4px'><img src='" + src + "' style='max-width:420px; border:1px solid #ddd'></p>";
-      photosHtml += "<p style='font-size:9pt; color:#6b6560; margin:0 0 16px'>Figure " + (i+1) + ". Site photo.</p>";
-    });
-  }
-  var html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>";
-  html += "<head><meta charset='utf-8'><title>" + (r.typeLabel || "Report") + "</title>";
-  html += "<style>body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 50px 60px; line-height: 1.5; font-size: 11pt; } ";
-  html += "h1 { color: #5F351B; font-size: 16pt; margin: 16px 0 6px; } ";
-  html += ".tagline { color: #8AC641; font-style: italic; font-size: 9pt; margin: 4px 0 18px; } ";
-  html += "h2 { color: #5F351B; font-size: 13pt; margin: 20px 0 8px; } ";
-  html += ".meta { font-size: 11pt; margin: 8px 0 16px; line-height: 1.6; } ";
-  html += ".footer { margin-top: 30px; border-top: 2px solid #E91E63; padding-top: 8px; font-size: 8pt; text-align: center; color: #6b6560; }</style></head>";
-  html += "<body>";
-  if (logoSrc) html += "<img src='" + logoSrc + "' style='width:100px; height:auto; margin-bottom:4px'>";
-  html += "<p class='tagline'>Expert Analysis. Actionable Results.</p>";
-  html += "<h1>" + (r.typeLabel || r.type) + "</h1>";
-  html += "<div class='meta'><b>Property:</b> " + (r.property || "—") + "<br>";
+  var html = "<html><head><meta charset='utf-8'></head><body>";
+  html += "<h1>Harmony Horticulture</h1>";
+  html += "<p><i>Expert Analysis. Actionable Results.</i></p>";
+  html += "<h2>" + (r.typeLabel || "Report") + "</h2>";
+  html += "<p><b>Property:</b> " + (r.property || "") + "<br>";
   html += "<b>Client:</b> " + r.clientName + "<br>";
   html += "<b>Date:</b> " + r.date + "<br>";
-  html += "<b>Consultant:</b> " + r.user + "</div>";
-  html += "<h2>Overview</h2>";
-  html += "<div>" + (r.notes || "").replace(/\n/g, "<br>") + "</div>";
-  if (photosHtml) html += "<h2>Site Photos</h2>" + photosHtml;
-  html += "<div class='footer'>6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>602-237-6474 &bull; harmonyhorticulture.com</div>";
+  html += "<b>Consultant:</b> " + r.user + "</p>";
+  html += "<h3>Notes</h3><p>" + (r.notes || "").replace(/\n/g, "<br>") + "</p>";
+  html += "<div style='border-top:2px solid #E91E63; margin-top:20px; padding-top:8px; font-size:9pt; text-align:center'>6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>602-237-6474 • harmonyhorticulture.com</div>";
   html += "</body></html>";
   var blob = new Blob([html], { type: "application/msword" });
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = r.clientName.replace(/[^a-zA-Z0-9]/g, "") + "_" + r.date + "_" + r.type + ".doc";
+  a.download = r.clientName.replace(/[^a-zA-Z0-9]/g, "") + "_" + r.date + ".doc";
   a.click();
 }
+
+function loadDemo() {
+  data.reports = [
+    { id: "r1", user: "Krista", clientName: "Adelson Residence", property: "Adelson Residence", typeLabel: "Monthly Property Care", date: "2026-11-10", notes: "Sample report notes." }
+  ];
+  localStorage.setItem("hh_data", JSON.stringify(data));
+  alert("Demo loaded");
+  renderReports();
+}
+
+if (localStorage.getItem("hh_data")) {
+  Object.assign(data, JSON.parse(localStorage.getItem("hh_data")));
+}
+</script>
+</body>
+</html>
