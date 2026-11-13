@@ -475,8 +475,8 @@
 </div>
 
 <script>
-const ADMIN_PIN = "harmony-admin-2026"; // Change this
-const ADMIN_EMAIL = "accounting@harmonyhorticulture.com"; // Only this email gets admin access
+const ADMIN_EMAILS = ["accounting@harmonyhorticulture.com", "kasey@harmonyhorticulture.com"]; // Add more admin emails here
+const ADMIN_PIN = "harmony-admin-2026";
 const STORAGE_KEY = "hh_time_tracker_v2";
 
 let currentUser = null;
@@ -2972,8 +2972,8 @@ function login() {
       errEl.textContent = "Name and PIN required";
       return;
     }
-    const isAdminLogin = (email === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PIN);
-    if (email === ADMIN_EMAIL.toLowerCase() && pass !== ADMIN_PIN) {
+    const isAdminLogin = ADMIN_EMAILS.includes(email) && pass === ADMIN_PIN;
+    if (ADMIN_EMAILS.includes(email) && pass !== ADMIN_PIN) {
       errEl.textContent = "Admin email recognized, but PIN is incorrect.";
       return;
     }
