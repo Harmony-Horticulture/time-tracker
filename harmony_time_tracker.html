@@ -3278,6 +3278,8 @@ function downloadReportDOC(id) {
   a.download = `${r.clientName.replace(/[^a-zA-Z0-9]/g,"")}_${r.date}_${r.type}.doc`;
   a.click();
 }
+
+function cancelReport() {
   document.getElementById("reportForm").classList.add("hidden");
 }
 
