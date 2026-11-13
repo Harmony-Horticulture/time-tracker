@@ -57,7 +57,8 @@
     display: block;
     margin: 0 auto;
   }
-  .sidebar nav a, .sidebar button.nav {
+  .sidebar nav a, .sidebar button.nav, .sidebar .user-name {
+    font-family: "Jost", system-ui, sans-serif;
     display: block;
     width: 100%;
     text-align: left;
@@ -3220,24 +3221,24 @@ function downloadReportPDF(id) {
   } catch(e) {}
   doc.setTextColor(138, 198, 65);
   doc.setFontSize(9);
-  doc.text("Expert Analysis. Actionable Results.", 14, 34);
+  doc.text("Expert Analysis. Actionable Results.", 14, 42);
   doc.setTextColor(95, 53, 27);
   doc.setFontSize(14);
-  doc.text(r.typeLabel || r.type, 14, 46);
+  doc.text(r.typeLabel || r.type, 14, 54);
   doc.setFontSize(10);
   doc.setTextColor(42, 42, 40);
-  doc.text("Client: " + r.clientName, 14, 56);
-  doc.text("Property: " + (r.property || "—"), 14, 62);
-  doc.text("Date: " + r.date, 14, 68);
-  doc.text("Consultant: " + r.user, 14, 74);
+  doc.text("Client: " + r.clientName, 14, 66);
+  doc.text("Property: " + (r.property || "—"), 14, 72);
+  doc.text("Date: " + r.date, 14, 78);
+  doc.text("Consultant: " + r.user, 14, 84);
   doc.setFontSize(12);
   doc.setTextColor(95, 53, 27);
-  doc.text("Notes", 14, 86);
+  doc.text("Notes", 14, 96);
   doc.setFontSize(10);
   doc.setTextColor(42, 42, 40);
   const split = doc.splitTextToSize(r.notes || "(No notes)", 180);
-  doc.text(split, 14, 94);
-  let y = 94 + split.length * 5 + 6;
+  doc.text(split, 14, 104);
+  let y = 104 + split.length * 5 + 6;
   if (r.photos && r.photos.length) {
     doc.setFontSize(12);
     doc.setTextColor(95, 53, 27);
