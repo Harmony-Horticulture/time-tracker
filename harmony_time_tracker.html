@@ -3253,20 +3253,20 @@ function downloadReportDOC(id) {
   if (!r) return;
   const logo = document.querySelector("img[src*='logo']")?.src || "";
   const photosHtml = (r.photos || []).map((src, i) =>
-    "<p style='margin:10px 0 2px'><img src='" + src + "' style='max-width:400px; border:1px solid #ddd'></p>" +
-    "<p style='font-size:9pt; color:#6b6560; margin:0 0 14px'>Figure " + (i+1) + ". Site photo.</p>"
+    "<p style='text-align:center; margin:12px 0 4px'><img src='" + src + "' style='max-width:380px; border:1px solid #ddd'></p>" +
+    "<p style='text-align:center; font-size:9pt; color:#6b6560; margin:0 0 16px'>Figure " + (i+1) + ". Site photo.</p>"
   ).join("");
   let html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>";
   html += "<head><meta charset='utf-8'><title>" + (r.typeLabel || "Report") + "</title>";
-  html += "<style>body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 50px 60px; line-height: 1.5; font-size: 11pt; } ";
-  html += "h1 { color: #5F351B; font-size: 16pt; margin: 14px 0 6px; font-weight: 500; } ";
-  html += ".tagline { color: #8AC641; font-style: italic; font-size: 9pt; margin: 2px 0 16px; } ";
-  html += "h2 { color: #5F351B; font-size: 13pt; margin: 18px 0 6px; font-weight: 500; } ";
-  html += ".meta { font-size: 11pt; margin: 6px 0 14px; line-height: 1.6; } ";
+  html += "<style>body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 60px 70px; line-height: 1.5; font-size: 11pt; } ";
+  html += "h1 { color: #5F351B; font-size: 16pt; margin: 12px 0 6px; font-weight: 500; } ";
+  html += ".tagline { color: #8AC641; font-style: italic; font-size: 9pt; margin: 2px 0 14px; } ";
+  html += "h2 { color: #5F351B; font-size: 13pt; margin: 16px 0 6px; font-weight: 500; } ";
+  html += ".meta { font-size: 11pt; margin: 6px 0 12px; line-height: 1.5; } ";
   html += ".meta b { color: #5F351B; } ";
-  html += ".footer { margin-top: 28px; border-top: 2px solid #E91E63; padding-top: 6px; font-size: 8pt; text-align: center; color: #6b6560; }</style></head>";
+  html += ".footer { margin-top: 24px; border-top: 2px solid #E91E63; padding-top: 6px; font-size: 8pt; text-align: center; color: #6b6560; }</style></head>";
   html += "<body>";
-  if (logo) html += "<img src='" + logo + "' style='width:90px; height:auto; margin-bottom:2px'>";
+  if (logo) html += "<p style='margin:0 0 4px'><img src='" + logo + "' style='width:80px; height:auto'></p>";
   html += "<p class='tagline'>Expert Analysis. Actionable Results.</p>";
   html += "<h1>" + (r.typeLabel || r.type) + "</h1>";
   html += "<div class='meta'><b>Property:</b> " + (r.property || "—") + "<br>";
