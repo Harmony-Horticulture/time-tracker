@@ -250,7 +250,10 @@
     <label>Your Name</label>
     <input id="loginName" placeholder="e.g. Alex Rivera" autocomplete="username">
     <label>Password (simple PIN for now)</label>
-    <input id="loginPass" type="password" placeholder="Your PIN" autocomplete="current-password">
+    <div style="position:relative">
+      <input id="loginPass" type="password" placeholder="Your PIN" autocomplete="current-password" style="padding-right:50px">
+      <span onclick="togglePass()" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:0.85rem; color:#6b6560" id="passToggle">Show</span>
+    </div>
     <label>Email <span style="color:var(--danger)">*</span> (required for new accounts — used for description approval notifications)</label>
     <input id="loginEmail" type="email" placeholder="you@example.com">
     <div class="btn-row" style="margin-top:16px">
@@ -2946,7 +2949,17 @@ function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-function login() {
+function togglePass() {
+  const inp = document.getElementById("loginPass");
+  const tog = document.getElementById("passToggle");
+  if (inp.type === "password") {
+    inp.type = "text";
+    tog.textContent = "Hide";
+  } else {
+    inp.type = "password";
+    tog.textContent = "Show";
+  }
+}
   try {
     const name = document.getElementById("loginName").value.trim().replace(/['’]/g, "");
     const pass = document.getElementById("loginPass").value.trim().replace(/[\u2010-\u2015]/g, "-"); // normalize hyphens
