@@ -3110,7 +3110,7 @@ function renderReportEntries() {
       <strong>${r.date}</strong> — ${r.clientName} — ${r.type}<br>
       <small>${r.property || ""}</small>
       <div style="margin-top:6px">
-        <button class="secondary" onclick="downloadReportDOC('${r.id}')">Download DOC</button>
+        <button class="secondary" onclick="downloadReportPDF('${r.id}')">PDF</button> <button class="secondary" onclick="downloadReportDOC('${r.id}')">DOC</button>
       </div>
     </div>
   `).join("");
@@ -3209,6 +3209,42 @@ function startNewReport(prefill) {
 }
 
 
+
+
+const APPS_SCRIPT_URL = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbzMR62hN74PkIRJ1CvDT9719uYArwZfZecgUu0rdZqZ4vj7FAB73CEaIC_uc3R6UglDGg/exec";
+
+async function downloadReportPDF(id) {
+  const r = (data.reports || []).find(x => x.id === id);
+  if (!r) return;
+  if (APPS_SCRIPT_URL === "PASTE_YOUR_APPS_SCRIPT_URL_HERE") {
+    alert("Apps Script URL not set. Use Download DOC for now.");
+    return;
+  }
+  const payload = {
+    typeLabel: r.typeLabel,
+    property: r.property,
+    clientName: r.clientName,
+    date: r.date,
+    user: r.user,
+    notes: r.notes,
+    photos: r.photos || []
+  };
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const b64 = await res.text();
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${r.clientName.replace(/[^a-zA-Z0-9]/g,"")}_${r.date}_${r.type}.pdf`;
+    a.click();
+  } catch (err) {
+    alert("PDF generation failed: " + err.message);
+  }
+}
 
 function downloadReportDOC(id) {
   const r = (data.reports || []).find(x => x.id === id);
