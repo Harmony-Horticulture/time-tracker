@@ -3100,16 +3100,19 @@ function showReports() {
 
 function renderReportEntries() {
   const div = document.getElementById("reportEntries");
-  const mine = data.entries.filter(e => e.user === currentUser);
-  if (!mine.length) {
-    div.innerHTML = "<p>No time entries yet. Add time first, then create a report.</p>";
+  const reports = (data.reports || []).filter(r => r.user === currentUser || isAdmin);
+  if (!reports.length) {
+    div.innerHTML = "<p>No reports yet. Create one above.</p>";
     return;
   }
-  div.innerHTML = mine.map(e => `
+  div.innerHTML = reports.map(r => `
     <div class="entry">
-      <strong>${e.date}</strong> — ${e.clientName} / ${e.property || "—"}<br>
-      ${e.hours} hrs — ${e.description}
-      <button class="secondary" style="float:right" onclick="createReportFromEntry('${e.id}')">Create Report</button>
+      <strong>${r.date}</strong> — ${r.clientName} — ${r.type}<br>
+      <small>${r.property || ""}</small>
+      <div style="margin-top:6px">
+        <button class="secondary" onclick="downloadReportPDF('${r.id}')">PDF</button>
+        <button class="secondary" onclick="downloadReportDOC('${r.id}')">DOC</button>
+      </div>
     </div>
   `).join("");
 }
@@ -3206,7 +3209,75 @@ function startNewReport(prefill) {
   }
 }
 
-function cancelReport() {
+function downloadReportPDF(id) {
+  const r = (data.reports || []).find(x => x.id === id);
+  if (!r) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFont("helvetica");
+  doc.setFontSize(16);
+  doc.setTextColor(95, 53, 27);
+  doc.text("Harmony Horticulture", 20, 20);
+  doc.setFontSize(13);
+  doc.text(r.typeLabel || r.type, 20, 30);
+  doc.setFontSize(10);
+  doc.setTextColor(42, 42, 40);
+  doc.text(`Client: ${r.clientName}`, 20, 42);
+  doc.text(`Property: ${r.property || "—"}`, 20, 48);
+  doc.text(`Date: ${r.date}`, 20, 54);
+  doc.text(`Consultant: ${r.user}`, 20, 60);
+  doc.setFontSize(11);
+  doc.text("Notes", 20, 74);
+  const split = doc.splitTextToSize(r.notes || "(No notes)", 170);
+  doc.text(split, 20, 82);
+  let y = 82 + split.length * 5 + 8;
+  (r.photos || []).forEach(src => {
+    if (y > 250) { doc.addPage(); y = 20; }
+    try { doc.addImage(src, "JPEG", 20, y, 60, 45); } catch(e) {}
+    y += 50;
+  });
+  doc.save(`${r.clientName.replace(/[^a-zA-Z0-9]/g,"")}_${r.date}_${r.type}.pdf`);
+}
+
+function downloadReportDOC(id) {
+  const r = (data.reports || []).find(x => x.id === id);
+  if (!r) return;
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+  <head><meta charset="utf-8"><title>${r.typeLabel}</title>
+  <style>
+    body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 40px; }
+    h1 { color: #5F351B; font-size: 22pt; margin-bottom: 4px; }
+    .tagline { color: #8AC641; font-style: italic; margin-top: 0; }
+    h2 { color: #5F351B; font-size: 16pt; }
+    h3 { color: #5F351B; font-size: 13pt; border-bottom: 1px solid #E91E63; padding-bottom: 4px; }
+    .meta { margin: 12px 0; }
+    .footer { margin-top: 40px; border-top: 2px solid #E91E63; padding-top: 8px; font-size: 9pt; text-align: center; color: #6b6560; }
+  </style></head>
+  <body>
+    <h1>Harmony Horticulture</h1>
+    <p class="tagline">Expert Analysis. Actionable Results.</p>
+    <h2>${r.typeLabel || r.type}</h2>
+    <div class="meta">
+      <b>Client:</b> ${r.clientName}<br>
+      <b>Property:</b> ${r.property || "—"}<br>
+      <b>Date:</b> ${r.date}<br>
+      <b>Consultant:</b> ${r.user}
+    </div>
+    <h3>Notes</h3>
+    <p>${(r.notes || "").replace(/\n/g, "<br>")}</p>
+    ${(r.photos || []).length ? "<h3>Site Photos</h3>" : ""}
+    ${(r.photos || []).map(src => `<p><img src="${src}" style="max-width:420px; border:1px solid #ddd"></p>`).join("")}
+    <div class="footer">
+      6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>
+      602-237-6474 &bull; harmonyhorticulture.com
+    </div>
+  </body></html>`;
+  const blob = new Blob([html], { type: "application/msword" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${r.clientName.replace(/[^a-zA-Z0-9]/g,"")}_${r.date}_${r.type}.doc`;
+  a.click();
+}
   document.getElementById("reportForm").classList.add("hidden");
 }
 
@@ -3251,6 +3322,25 @@ function saveReportDraft() {
   });
 
   doc.save(filename);
+
+  // Store report for later download
+  if (!data.reports) data.reports = [];
+  const report = {
+    id: "r" + Date.now(),
+    user: currentUser,
+    clientName: document.getElementById("reportClientSearch").value || client,
+    property: property,
+    contact: contact,
+    type: type,
+    typeLabel: document.getElementById("reportType").selectedOptions[0].text,
+    date: date,
+    notes: notes,
+    photos: Array.from(document.querySelectorAll("#reportPhotoPreviews img")).map(img => img.src),
+    createdAt: new Date().toISOString()
+  };
+  data.reports.push(report);
+  saveData();
+  renderReportEntries();
 
   // Upload photos to Reports folder and email
   const scriptUrl = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz6MktUw5Vfyd77Gv0cl38iGlxHfVWO4Xf9_dneWQ8NlUAzsMMKunAjQP8IxIOeNFJOpA/exec";
