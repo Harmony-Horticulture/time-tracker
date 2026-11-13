@@ -1,45 +1,38 @@
 function downloadReportDOC(id) {
   const r = (data.reports || []).find(x => x.id === id);
   if (!r) return;
-  const logo = document.querySelector("img[src*='logo']")?.src || "";
-  const photosHtml = (r.photos || []).map((src, i) => 
-    `<p style="margin:12px 0 4px"><img src="${src}" style="max-width:420px; border:1px solid #ddd"></p>
-     <p style="font-size:9pt; color:#6b6560; margin:0 0 16px">Figure ${i+1}. Site photo.</p>`
-  ).join("");
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-  <head><meta charset="utf-8"><title>${r.typeLabel}</title>
-  <style>
-    body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 50px 60px; line-height: 1.5; font-size: 11pt; }
-    h1 { color: #5F351B; font-size: 16pt; margin: 16px 0 6px; font-weight: 500; }
-    .tagline { color: #8AC641; font-style: italic; font-size: 9pt; margin: 4px 0 18px; }
-    h2 { color: #5F351B; font-size: 13pt; margin: 20px 0 8px; font-weight: 500; }
-    .meta { font-size: 11pt; margin: 8px 0 16px; line-height: 1.6; }
-    .meta b { color: #5F351B; }
-    .notes { font-size: 11pt; margin: 0 0 12px; }
-    .footer { margin-top: 30px; border-top: 2px solid #E91E63; padding-top: 8px; font-size: 8pt; text-align: center; color: #6b6560; }
-    p { margin: 0 0 8px; }
-  </style></head>
-  <body>
-    <img src="${logo}" style="width:100px; height:auto; margin-bottom:4px">
-    <p class="tagline">Expert Analysis. Actionable Results.</p>
-    <h1>${r.typeLabel || r.type}</h1>
-    <div class="meta">
-      <b>Property:</b> ${r.property || "—"}<br>
-      <b>Client:</b> ${r.clientName}<br>
-      <b>Date:</b> ${r.date}<br>
-      <b>Consultant:</b> ${r.user}
-    </div>
-    <h2>Overview</h2>
-    <div class="notes">${(r.notes || "").replace(/\\n/g, "<br>")}</div>
-    ${photosHtml ? '<h2>Site Photos</h2>' + photosHtml : ''}
-    <div class="footer">
-      6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>
-      602-237-6474 &bull; harmonyhorticulture.com
-    </div>
-  </body></html>`;
+  const logo = document.querySelector("img[src*='logo']") ? document.querySelector("img[src*='logo']").src : "";
+  let photosHtml = "";
+  if (r.photos && r.photos.length) {
+    r.photos.forEach(function(src, i) {
+      photosHtml += "<p style='margin:12px 0 4px'><img src='" + src + "' style='max-width:420px; border:1px solid #ddd'></p>";
+      photosHtml += "<p style='font-size:9pt; color:#6b6560; margin:0 0 16px'>Figure " + (i+1) + ". Site photo.</p>";
+    });
+  }
+  let html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>";
+  html += "<head><meta charset='utf-8'><title>" + (r.typeLabel || "Report") + "</title>";
+  html += "<style>body { font-family: Calibri, sans-serif; color: #2A2A28; margin: 50px 60px; line-height: 1.5; font-size: 11pt; } ";
+  html += "h1 { color: #5F351B; font-size: 16pt; margin: 16px 0 6px; } ";
+  html += ".tagline { color: #8AC641; font-style: italic; font-size: 9pt; margin: 4px 0 18px; } ";
+  html += "h2 { color: #5F351B; font-size: 13pt; margin: 20px 0 8px; } ";
+  html += ".meta { font-size: 11pt; margin: 8px 0 16px; line-height: 1.6; } ";
+  html += ".footer { margin-top: 30px; border-top: 2px solid #E91E63; padding-top: 8px; font-size: 8pt; text-align: center; color: #6b6560; }</style></head>";
+  html += "<body>";
+  if (logo) html += "<img src='" + logo + "' style='width:100px; height:auto; margin-bottom:4px'>";
+  html += "<p class='tagline'>Expert Analysis. Actionable Results.</p>";
+  html += "<h1>" + (r.typeLabel || r.type) + "</h1>";
+  html += "<div class='meta'><b>Property:</b> " + (r.property || "—") + "<br>";
+  html += "<b>Client:</b> " + r.clientName + "<br>";
+  html += "<b>Date:</b> " + r.date + "<br>";
+  html += "<b>Consultant:</b> " + r.user + "</div>";
+  html += "<h2>Overview</h2>";
+  html += "<div>" + (r.notes || "").replace(/\\n/g, "<br>") + "</div>";
+  if (photosHtml) html += "<h2>Site Photos</h2>" + photosHtml;
+  html += "<div class='footer'>6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>602-237-6474 &bull; harmonyhorticulture.com</div>";
+  html += "</body></html>";
   const blob = new Blob([html], { type: "application/msword" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `${r.clientName.replace(/[^a-zA-Z0-9]/g,"")}_${r.date}_${r.type}.doc`;
+  a.download = r.clientName.replace(/[^a-zA-Z0-9]/g, "") + "_" + r.date + "_" + r.type + ".doc";
   a.click();
 }
