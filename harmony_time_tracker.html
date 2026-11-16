@@ -3213,45 +3213,20 @@ function startNewReport(prefill) {
 
 const APPS_SCRIPT_URL = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbzMR62hN74PkIRJ1CvDT9719uYArwZfZecgUu0rdZqZ4vj7FAB73CEaIC_uc3R6UglDGg/exec";
 
-async function downloadReportDOC(id) {
+function downloadReportDOC(id) {
   const r = (data.reports || []).find(x => x.id === id);
   if (!r) return;
-  const btn = event?.target;
-  if (btn) { btn.disabled = true; btn.textContent = "Generating..."; }
-  try {
-    var photoIds = [];
-    if (r.photos && r.photos.length) {
-      for (var i = 0; i < r.photos.length; i++) {
-        var src = r.photos[i];
-        if (src.startsWith("data:")) {
-          var base64 = src.split(",")[1];
-          var mime = src.split(";")[0].split(":")[1];
-          var res = await fetch("https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec", {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ action: "uploadPhoto", base64: base64, mimeType: mime, fileName: "photo_" + i + ".jpg" })
-          });
-          var result = await res.json();
-          if (result.success) photoIds.push(result.fileId);
-        }
-      }
-    }
-    var params = new URLSearchParams({
-      clientName: r.clientName || "",
-      property: r.property || "",
-      date: r.date || "",
-      user: r.user || "",
-      type: r.type || "",
-      typeLabel: r.typeLabel || r.type || "",
-      notes: (r.notes || "").substring(0, 500),
-      photoIds: photoIds.join(",")
-    });
-    var url = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec?" + params.toString();
-    window.open(url, "_blank");
-  } catch (err) {
-    alert("Could not generate report: " + err.message);
-  }
-  if (btn) { btn.disabled = false; btn.textContent = "DOC"; }
+  var params = new URLSearchParams({
+    clientName: r.clientName || "",
+    property: r.property || "",
+    date: r.date || "",
+    user: r.user || "",
+    type: r.type || "",
+    typeLabel: r.typeLabel || r.type || "",
+    notes: (r.notes || "").substring(0, 500)
+  });
+  var url = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec?" + params.toString();
+  window.open(url, "_blank");
 }
 
 function cancelReport() {
