@@ -408,7 +408,12 @@
       <div id="reportForm" class="card hidden">
         <h2>New Report</h2>
         <label>Report Type</label>
-        <select id="reportType">
+        <div style="display:flex; gap:8px; margin-bottom:12px">
+          <button type="button" onclick="selectReportType('monthly')" id="btnMonthly" class="report-type-btn" style="flex:1; padding:10px; border:2px solid var(--moss); border-radius:8px; background:var(--moss); color:white">Monthly Property Care</button>
+          <button type="button" onclick="selectReportType('sitevisit')" id="btnSitevisit" class="report-type-btn" style="flex:1; padding:10px; border:2px solid #ccc; border-radius:8px; background:white; color:#333">Site Visit Photo</button>
+          <button type="button" onclick="selectReportType('other')" id="btnOther" class="report-type-btn" style="flex:1; padding:10px; border:2px solid #ccc; border-radius:8px; background:white; color:#333">Other / Custom</button>
+        </div>
+        <select id="reportType" style="display:none">
           <option value="monthly">Monthly Property Care</option>
           <option value="sitevisit">Site Visit Photo Report</option>
           <option value="other">Other / Custom</option>
