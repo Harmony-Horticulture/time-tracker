@@ -3214,19 +3214,44 @@ function startNewReport(prefill) {
 const APPS_SCRIPT_URL = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbzMR62hN74PkIRJ1CvDT9719uYArwZfZecgUu0rdZqZ4vj7FAB73CEaIC_uc3R6UglDGg/exec";
 
 function downloadReportDOC(id) {
-  const r = (data.reports || []).find(x => x.id === id);
+  var r = (data.reports || []).find(function(x) { return x.id === id; });
   if (!r) return;
-  var params = new URLSearchParams({
-    clientName: r.clientName || "",
-    property: r.property || "",
-    date: r.date || "",
-    user: r.user || "",
-    type: r.type || "",
-    typeLabel: r.typeLabel || r.type || "",
-    notes: (r.notes || "").substring(0, 500)
-  });
-  var url = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec?" + params.toString();
-  window.open(url, "_blank");
+  
+  var photosHtml = "";
+  if (r.photos && r.photos.length) {
+    r.photos.forEach(function(src, i) {
+      photosHtml += "<p style='text-align:center;margin:12px 0 4px'><img src='" + src + "' style='max-width:380px;border:1px solid #ddd'></p>";
+      photosHtml += "<p style='text-align:center;font-size:9pt;color:#6b6560;margin:0 0 16px'>Figure " + (i+1) + ". Site photo.</p>";
+    });
+  }
+  
+  var html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>";
+  html += "<head><meta charset='utf-8'><title>" + (r.typeLabel || "Report") + "</title>";
+  html += "<style>body{font-family:Georgia,serif;color:#2A2A28;margin:40px 50px;line-height:1.5;font-size:11pt;}";
+  html += "h1{color:#5F351B;font-size:16pt;margin:16px 0 6px;}";
+  html += ".tagline{color:#8AC641;font-style:italic;font-size:9pt;margin:4px 0 18px;}";
+  html += "h2{color:#5F351B;font-size:13pt;margin:20px 0 8px;}";
+  html += ".meta{font-size:11pt;margin:8px 0 16px;line-height:1.6;}";
+  html += ".footer{margin-top:30px;border-top:2px solid #E91E63;padding-top:8px;font-size:8pt;text-align:center;color:#6b6560;}</style></head>";
+  html += "<body>";
+  html += "<p style='margin:0 0 2px;font-size:14pt;color:#5F351B;font-weight:600'>HARMONY HORTICULTURE</p>";
+  html += "<p class='tagline'>Expert Analysis. Actionable Results.</p>";
+  html += "<h1>" + (r.typeLabel || r.type) + "</h1>";
+  html += "<div class='meta'><b>Property:</b> " + (r.property || "—") + "<br>";
+  html += "<b>Client:</b> " + r.clientName + "<br>";
+  html += "<b>Date:</b> " + r.date + "<br>";
+  html += "<b>Consultant:</b> " + r.user + "</div>";
+  html += "<h2>Overview</h2>";
+  html += "<div>" + (r.notes || "").replace(/\n/g, "<br>") + "</div>";
+  if (photosHtml) html += "<h2>Site Photos</h2>" + photosHtml;
+  html += "<div class='footer'>6125 E Indian School Rd, Suite 2010, Scottsdale, AZ 85251<br>602-237-6474 • harmonyhorticulture.com</div>";
+  html += "</body></html>";
+  
+  var blob = new Blob([html], { type: "application/msword" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (r.clientName || "Report").replace(/[^a-zA-Z0-9]/g, "") + "_" + r.date + "_" + r.type + ".doc";
+  a.click();
 }
 
 function cancelReport() {
