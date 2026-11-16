@@ -3216,57 +3216,40 @@ const APPS_SCRIPT_URL = "https://script.google.com/a/macros/harmonyhorticulture.
 async function downloadReportDOC(id) {
   const r = (data.reports || []).find(x => x.id === id);
   if (!r) return;
-  if (APPS_SCRIPT_URL === "PASTE_YOUR_APPS_SCRIPT_URL_HERE") {
-    alert("Apps Script URL not set. Use Download DOC for now.");
-    return;
-  }
-  const payload = {
-    typeLabel: r.typeLabel,
-    property: r.property,
-    clientName: r.clientName,
-    date: r.date,
-    user: r.user,
-    notes: r.notes,
-    photos: r.photos || []
-  };
-  try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload)
-    });
-    const b64 = await res.text();
-    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    const blob = new Blob([bytes], { type: "application/pdf" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${r.clientName.replace(/[^a-zA-Z0-9]/g,"")}_${r.date}_${r.type}.pdf`;
-    a.click();
-  } catch (err) {
-    alert("PDF generation failed: " + err.message);
-  }
-}
-
-async function downloadReportDOC(id) {
-  const r = (data.reports || []).find(x => x.id === id);
-  if (!r) return;
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = "Generating..."; }
   try {
-    const params = new URLSearchParams({
+    var photoIds = [];
+    if (r.photos && r.photos.length) {
+      for (var i = 0; i < r.photos.length; i++) {
+        var src = r.photos[i];
+        if (src.startsWith("data:")) {
+          var base64 = src.split(",")[1];
+          var mime = src.split(";")[0].split(":")[1];
+          var res = await fetch("https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec", {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ action: "uploadPhoto", base64: base64, mimeType: mime, fileName: "photo_" + i + ".jpg" })
+          });
+          var result = await res.json();
+          if (result.success) photoIds.push(result.fileId);
+        }
+      }
+    }
+    var params = new URLSearchParams({
       clientName: r.clientName || "",
       property: r.property || "",
       date: r.date || "",
       user: r.user || "",
       type: r.type || "",
       typeLabel: r.typeLabel || r.type || "",
-      notes: (r.notes || "").substring(0, 500)
+      notes: (r.notes || "").substring(0, 500),
+      photoIds: photoIds.join(",")
     });
-    const url = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec?" + params.toString();
+    var url = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec?" + params.toString();
     window.open(url, "_blank");
   } catch (err) {
-    alert("Could not open report service.");
+    alert("Could not generate report: " + err.message);
   }
   if (btn) { btn.disabled = false; btn.textContent = "DOC"; }
 }
