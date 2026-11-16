@@ -3254,27 +3254,19 @@ async function downloadReportDOC(id) {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = "Generating..."; }
   try {
-    const res = await fetch("https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec", {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({
-        clientName: r.clientName,
-        property: r.property || "",
-        date: r.date,
-        user: r.user,
-        type: r.type,
-        typeLabel: r.typeLabel || r.type,
-        notes: r.notes || ""
-      })
+    const params = new URLSearchParams({
+      clientName: r.clientName || "",
+      property: r.property || "",
+      date: r.date || "",
+      user: r.user || "",
+      type: r.type || "",
+      typeLabel: r.typeLabel || r.type || "",
+      notes: (r.notes || "").substring(0, 500)
     });
-    const result = await res.json();
-    if (result.success && result.wordUrl) {
-      window.open(result.wordUrl, "_blank");
-    } else {
-      alert("Report generation failed: " + (result.error || "Unknown error"));
-    }
+    const url = "https://script.google.com/a/macros/harmonyhorticulture.com/s/AKfycbz3mtbwnr1aT-qYr5WRvcsFW3HPe1VjVMDuvactAivQinzbpFjpblBSJ2j4rrkDdOtoIw/exec?" + params.toString();
+    window.open(url, "_blank");
   } catch (err) {
-    alert("Could not reach report service. Check your connection.");
+    alert("Could not open report service.");
   }
   if (btn) { btn.disabled = false; btn.textContent = "DOC"; }
 }
