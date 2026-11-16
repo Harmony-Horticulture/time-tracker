@@ -408,15 +408,25 @@
       <div id="reportForm" class="card hidden">
         <h2>New Report</h2>
         <label>Report Type</label>
-        <div style="display:flex; gap:8px; margin-bottom:12px">
-          <button type="button" onclick="selectReportType('monthly')" id="btnMonthly" class="report-type-btn" style="flex:1; padding:10px; border:2px solid var(--moss); border-radius:8px; background:var(--moss); color:white">Monthly Property Care</button>
-          <button type="button" onclick="selectReportType('sitevisit')" id="btnSitevisit" class="report-type-btn" style="flex:1; padding:10px; border:2px solid #ccc; border-radius:8px; background:white; color:#333">Site Visit Photo</button>
-          <button type="button" onclick="selectReportType('other')" id="btnOther" class="report-type-btn" style="flex:1; padding:10px; border:2px solid #ccc; border-radius:8px; background:white; color:#333">Other / Custom</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px">
+          <button type="button" onclick="selectReportType('monthly')" id="btnMonthly" class="report-type-btn" style="padding:12px; border:2px solid var(--moss); border-radius:8px; background:var(--moss); color:white; text-align:left">
+            <b>Monthly Property Care</b><br><span style="font-size:0.8rem; opacity:0.9">Overview, observations, recommendations</span>
+          </button>
+          <button type="button" onclick="selectReportType('sitevisit')" id="btnSitevisit" class="report-type-btn" style="padding:12px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left">
+            <b>Site Visit Photo</b><br><span style="font-size:0.8rem; opacity:0.7">Photos with observations</span>
+          </button>
+          <button type="button" onclick="selectReportType('executive')" id="btnExecutive" class="report-type-btn" style="padding:12px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left">
+            <b>Executive Summary</b><br><span style="font-size:0.8rem; opacity:0.7">Prioritized findings</span>
+          </button>
+          <button type="button" onclick="selectReportType('letterhead')" id="btnLetterhead" class="report-type-btn" style="padding:12px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left">
+            <b>Company Letterhead</b><br><span style="font-size:0.8rem; opacity:0.7">Free-form text</span>
+          </button>
         </div>
         <select id="reportType" style="display:none">
           <option value="monthly">Monthly Property Care</option>
           <option value="sitevisit">Site Visit Photo Report</option>
-          <option value="other">Other / Custom</option>
+          <option value="executive">Executive Summary Report</option>
+          <option value="letterhead">Company Letterhead</option>
         </select>
         <label>Client</label>
         <div style="position:relative">
@@ -428,17 +438,24 @@
         <datalist id="reportPropertyList"></datalist>
         <label>Contact (optional)</label>
         <input id="reportContact" placeholder="Contact person">
-        <label>Overview / Notes</label>
-        <textarea id="reportNotes" placeholder="Dictate or type your observations..."></textarea>
-        <div style="display:flex; align-items:center; gap:10px; margin:8px 0">
-          <button type="button" onclick="startDictation()" style="width:44px; height:44px; border-radius:50%; background:#e5e5ea; color:#1c1c1e; border:none; font-size:1.3rem; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer" title="Dictate">
-            🎤
-          </button>
-          <span style="color:#8e8e93; font-size:0.9rem">Tap to dictate</span>
+        <div style="margin-top:16px">
+          <label style="font-weight:600">Key Observations</label>
+          <p style="font-size:0.85rem; color:#666; margin:4px 0 12px">Add a photo and dictate or type your observation.</p>
+          <div id="observationsList"></div>
+          <button type="button" onclick="addObservation()" style="width:100%; padding:12px; border:1px dashed #ccc; border-radius:8px; background:#fafafa; color:#666; margin-top:8px">+ Add observation</button>
         </div>
-        <label>Photos</label>
-        <input type="file" id="reportPhotos" accept="image/*" multiple onchange="previewReportPhotos(this)">
-        <div id="reportPhotoPreviews" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px"></div>
+        <div style="margin-top:16px">
+          <label style="font-weight:600">Recommendations</label>
+          <div id="recommendationsList"></div>
+          <button type="button" onclick="addRecommendation()" style="width:100%; padding:12px; border:1px dashed #ccc; border-radius:8px; background:#fafafa; color:#666; margin-top:8px">+ Add recommendation</button>
+        </div>
+        <div style="margin-top:16px">
+          <label style="font-weight:600">Priorities</label>
+          <p style="font-size:0.85rem; color:#666; margin:4px 0 12px">Add priority levels for action items.</p>
+          <div id="prioritiesList"></div>
+          <button type="button" onclick="addPriority()" style="width:100%; padding:12px; border:1px dashed #ccc; border-radius:8px; background:#fafafa; color:#666; margin-top:8px">+ Add priority</button>
+        </div>
+        <textarea id="reportNotes" style="display:none"></textarea>
         <div class="btn-row">
           <button onclick="saveReportDraft()">Save Draft</button>
           <button class="secondary" onclick="cancelReport()">Cancel</button>
