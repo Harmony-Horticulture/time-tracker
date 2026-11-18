@@ -247,7 +247,7 @@
   // =====================================================================
   function blankForm() {
     return {
-      id: null, user_id: state.me.id, client_id: null, property: "", entry_date: today(), hours: 1,
+      id: null, user_id: state.me.id, client_id: null, property: "", entry_date: today(), hours: 0,
       service_type_id: "", description: "", site_minimum_amount: "", origination: false, materials: [],
     };
   }
@@ -359,13 +359,14 @@
       let v = parseFloat(hoursInput.value);
       if (isNaN(v)) v = 0;
       v = Math.round(v * 4) / 4 + d;
-      v = Math.min(24, Math.max(0.25, v));
+      v = Math.min(24, Math.max(0, v));
       hoursInput.value = fmtH(v);
       $("#hoursErr").textContent = "";
     };
     $("#hMinus").onclick = () => step(-0.25);
     $("#hPlus").onclick = () => step(0.25);
-    hoursInput.onblur = () => validateHours(true);
+    // Starts at 0, so only complain on leaving the box once something other than 0 is typed
+    hoursInput.onblur = () => { if (parseFloat(hoursInput.value) !== 0) validateHours(true); };
 
     // Service hint
     const svc = $("#fService");
@@ -393,7 +394,7 @@
     const v = parseFloat(raw);
     let msg = "";
     if (raw === "" || isNaN(v)) msg = "Enter the hours worked.";
-    else if (v <= 0) msg = "Hours must be more than 0.";
+    else if (v <= 0) msg = "Enter the hours worked. An entry can't be 0 hours.";
     else if (v > 24) msg = "Hours can't be more than 24.";
     else if (Math.round(v * 4) !== v * 4) msg = "Please use quarter hours: .25, .50 or .75.";
     if (show) $("#hoursErr").textContent = msg;
@@ -544,7 +545,7 @@
     const problems = [];
     if (!f.client_id) problems.push("Choose a client.");
     if (!f.entry_date) problems.push("Pick a date.");
-    if (validateHours(true) === null) problems.push("Fix the hours.");
+    if (validateHours(true) === null) problems.push(f.hours === 0 ? "Enter the hours worked (more than 0)." : "Fix the hours.");
     if (activeServices().length && !f.service_type_id) problems.push("Choose a service.");
     if (!f.description.trim()) problems.push("Add a description.");
     if (f.materials.some((m) => m.name && !(m.quantity > 0))) problems.push("Each material needs a quantity.");
