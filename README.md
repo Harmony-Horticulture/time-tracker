@@ -13,6 +13,7 @@ A simple web app for logging billable time and materials, for consultants on the
 - Sees their day and week with totals, with weekdays that have no time highlighted
 - Edits or deletes their own entries until they go into a QuickBooks file
 - Downloads their own time as a branded Excel file
+- Opens the report-building app from **Build a report** in the menu (set its address as `REPORT_BUILDER_URL` in `js/config.js`)
 
 **Admins**
 - **Time reports:** all time filtered by date range, person, client, and whether it's in a QuickBooks file yet

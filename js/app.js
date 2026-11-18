@@ -183,7 +183,11 @@
     review: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
     people: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.1.7 3.5 2.8 3.5 5.7"/>'),
     lists: svg('<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>'),
+    report: svg('<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
   };
+  // "Build a report" opens the separate report-building app, for every role
+  const reportUrl = () => (window.HH_CONFIG && window.HH_CONFIG.REPORT_BUILDER_URL) || "https://harmony-horticulture.github.io/report-builder/";
+  const reportLink = (cls, inner) => `<a class="${cls}" href="${esc(reportUrl())}" target="_blank" rel="noopener">${inner}</a>`;
   function navItems() {
     const items = [
       { id: "log", label: "Log time" },
@@ -197,11 +201,15 @@
     let side = "";
     let shownAdmin = false;
     items.forEach((i) => {
+      if (i.admin && !shownAdmin) { side += reportLink("nav-link", `${ICONS.report}<span>Build a report</span>`); }
       if (i.admin && !shownAdmin) { side += `<div class="nav-label">Admin</div>`; shownAdmin = true; }
       side += `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${ICONS[i.id]}<span>${esc(i.label)}</span></button>`;
     });
+    if (!shownAdmin) side += reportLink("nav-link", `${ICONS.report}<span>Build a report</span>`);
     $("#sideNav").innerHTML = side;
-    $("#bottomNav").innerHTML = items.map((i) => `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${esc(i.label)}</button>`).join("");
+    const bottom = items.map((i) => `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${esc(i.label)}</button>`);
+    bottom.splice(2, 0, reportLink("nav-link", "Report"));
+    $("#bottomNav").innerHTML = bottom.join("");
     $$("[data-view]").forEach((b) => (b.onclick = () => go(b.dataset.view)));
   }
   function go(view) {
