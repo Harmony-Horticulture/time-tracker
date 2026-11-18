@@ -13,7 +13,7 @@ create table public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   email       text not null,
   full_name   text not null default '',
-  role        text not null default 'consultant' check (role in ('consultant', 'admin')),
+  role        text not null default 'consultant' check (role in ('consultant', 'technician', 'admin')),
   -- Name used inside QuickBooks product/service names, e.g. "Robbie Stephens"
   qb_name     text,
   active      boolean not null default true,
@@ -24,7 +24,7 @@ create table public.profiles (
 create table public.invitations (
   email       text primary key check (email = lower(email)),
   full_name   text not null default '',
-  role        text not null default 'consultant' check (role in ('consultant', 'admin')),
+  role        text not null default 'consultant' check (role in ('consultant', 'technician', 'admin')),
   invited_by  uuid references public.profiles(id) on delete set null,
   invited_at  timestamptz not null default now(),
   accepted_at timestamptz

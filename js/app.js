@@ -31,6 +31,9 @@
   const fmtH = (n) => (Math.round(n * 100) / 100).toFixed(2);
   const sumH = (list) => list.reduce((s, e) => s + e.hours, 0);
   const isAdmin = () => state.me && state.me.role === "admin";
+  const ROLES = [["consultant", "Consultant"], ["technician", "Technician"], ["admin", "Admin"]];
+  const roleLabel = (r) => (ROLES.find((x) => x[0] === r) || [r, r])[1];
+  const roleOptions = (sel) => ROLES.map(([v, l]) => `<option value="${v}" ${v === sel ? "selected" : ""}>${l}</option>`).join("");
   const monthStart = () => today().slice(0, 8) + "01";
   const clientById = (id) => state.lists.clients.find((c) => c.id === Number(id));
   const personName = (id) => { const p = state.profiles.find((x) => x.id === id); return p ? p.full_name || p.email : id === (state.me && state.me.id) ? state.me.full_name : "Someone"; };
@@ -90,7 +93,7 @@
       showAuth(`
         <h1>Welcome</h1>
         <p class="muted small" style="text-align:center">Demo mode. Pick someone to try the app as. Nothing here is saved online.</p>
-        ${people.map((p) => `<button class="primary ${p.role === "admin" ? "" : "secondary"}" data-as="${esc(p.id)}" style="margin-bottom:8px">Sign in as ${esc(p.full_name)} · ${p.role}</button>`).join("")}
+        ${people.map((p) => `<button class="primary ${p.role === "admin" ? "" : "secondary"}" data-as="${esc(p.id)}" style="margin-bottom:8px">Sign in as ${esc(p.full_name)} · ${roleLabel(p.role)}</button>`).join("")}
       `);
       $$("[data-as]").forEach((b) => (b.onclick = () => S.signInAs(b.dataset.as)));
       return;
@@ -218,7 +221,7 @@
     $("#appView").classList.remove("hidden");
     $("#demoBanner").classList.toggle("hidden", S.mode !== "demo");
     $("#whoName").textContent = state.me.full_name || state.me.email;
-    $("#whoRole").textContent = state.me.role === "admin" ? "Admin" : "Consultant";
+    $("#whoRole").textContent = roleLabel(state.me.role);
     state.form = null;
     go(state.view);
   }
@@ -871,12 +874,12 @@
       <div class="page-head"><div><p class="eyebrow">Admin</p><h1>People</h1></div></div>
       <div class="card">
         <h2>Invite someone</h2>
-        <p class="small muted">They get an email with a link to set their password. Only invited people can get in.</p>
+        <p class="small muted">They get an email with a link to set their password. Only invited people can get in.<br><b>Consultant</b> and <b>Technician</b> log and see only their own time. <b>Admin</b> also sees everyone's time, approves it, downloads reports and manages people and lists.</p>
         <div class="grid4">
           <div class="field"><label for="ivName">Name <span class="req">*</span></label><input id="ivName"></div>
           <div class="field"><label for="ivEmail">Email <span class="req">*</span></label><input id="ivEmail" type="email"></div>
           <div class="field"><label for="ivRole">Role <span class="req">*</span></label>
-            <select id="ivRole"><option value="">Choose…</option><option value="consultant">Consultant</option><option value="admin">Admin</option></select></div>
+            <select id="ivRole"><option value="">Choose…</option>${roleOptions("")}</select></div>
           <div class="field" style="padding-top:28px"><button type="button" id="ivSend" style="width:100%">Send invitation</button></div>
         </div>
         ${invites.length ? `<p class="small"><b>Waiting to accept:</b> ${invites.map((i) => `${esc(i.full_name || i.email)} (${esc(i.email)}, ${esc(i.role)})`).join("; ")}</p>` : ""}
@@ -888,7 +891,7 @@
           <tbody>${state.profiles.map((p) => `<tr data-id="${esc(p.id)}">
             <td><input class="pName" value="${esc(p.full_name)}" aria-label="Name"></td>
             <td>${esc(p.email)}</td>
-            <td><select class="pRole" aria-label="Role" ${p.id === state.me.id ? "disabled" : ""}><option value="consultant" ${p.role === "consultant" ? "selected" : ""}>Consultant</option><option value="admin" ${p.role === "admin" ? "selected" : ""}>Admin</option></select></td>
+            <td><select class="pRole" aria-label="Role" ${p.id === state.me.id ? "disabled" : ""}>${roleOptions(p.role)}</select></td>
             <td><input class="pQB" value="${esc(p.qb_name || "")}" placeholder="e.g. Robbie Stephens" aria-label="QuickBooks name"></td>
             <td><input type="checkbox" class="pActive" ${p.active ? "checked" : ""} ${p.id === state.me.id ? "disabled" : ""} aria-label="Active"></td>
             <td><button type="button" class="small" data-save>Save</button></td>
