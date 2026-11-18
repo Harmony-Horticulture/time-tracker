@@ -15,4 +15,7 @@ window.HH_CONFIG = {
 
   // Warn when someone picks a date more than this many days back (user story TT-06)
   OLD_DATE_WARNING_DAYS: 7,
+
+  // The separate report-building app, opened from "Build a report" in the menu
+  REPORT_BUILDER_URL: "https://harmony-horticulture.github.io/report-builder/",
 };

@@ -183,7 +183,11 @@
     review: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
     people: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.1.7 3.5 2.8 3.5 5.7"/>'),
     lists: svg('<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>'),
+    report: svg('<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
   };
+  // "Build a report" opens the separate report-building app, for every role
+  const reportUrl = () => (window.HH_CONFIG && window.HH_CONFIG.REPORT_BUILDER_URL) || "https://harmony-horticulture.github.io/report-builder/";
+  const reportLink = (cls, inner) => `<a class="${cls}" href="${esc(reportUrl())}" target="_blank" rel="noopener">${inner}</a>`;
   function navItems() {
     const items = [
       { id: "log", label: "Log time" },
@@ -197,11 +201,15 @@
     let side = "";
     let shownAdmin = false;
     items.forEach((i) => {
+      if (i.admin && !shownAdmin) { side += reportLink("nav-link", `${ICONS.report}<span>Build a report</span>`); }
       if (i.admin && !shownAdmin) { side += `<div class="nav-label">Admin</div>`; shownAdmin = true; }
       side += `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${ICONS[i.id]}<span>${esc(i.label)}</span></button>`;
     });
+    if (!shownAdmin) side += reportLink("nav-link", `${ICONS.report}<span>Build a report</span>`);
     $("#sideNav").innerHTML = side;
-    $("#bottomNav").innerHTML = items.map((i) => `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${esc(i.label)}</button>`).join("");
+    const bottom = items.map((i) => `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${esc(i.label)}</button>`);
+    bottom.splice(2, 0, reportLink("nav-link", "Report"));
+    $("#bottomNav").innerHTML = bottom.join("");
     $$("[data-view]").forEach((b) => (b.onclick = () => go(b.dataset.view)));
   }
   function go(view) {
@@ -239,7 +247,7 @@
   // =====================================================================
   function blankForm() {
     return {
-      id: null, user_id: state.me.id, client_id: null, property: "", entry_date: today(), hours: 1,
+      id: null, user_id: state.me.id, client_id: null, property: "", entry_date: today(), hours: 0,
       service_type_id: "", description: "", site_minimum_amount: "", origination: false, materials: [],
     };
   }
@@ -351,13 +359,14 @@
       let v = parseFloat(hoursInput.value);
       if (isNaN(v)) v = 0;
       v = Math.round(v * 4) / 4 + d;
-      v = Math.min(24, Math.max(0.25, v));
+      v = Math.min(24, Math.max(0, v));
       hoursInput.value = fmtH(v);
       $("#hoursErr").textContent = "";
     };
     $("#hMinus").onclick = () => step(-0.25);
     $("#hPlus").onclick = () => step(0.25);
-    hoursInput.onblur = () => validateHours(true);
+    // Starts at 0, so only complain on leaving the box once something other than 0 is typed
+    hoursInput.onblur = () => { if (parseFloat(hoursInput.value) !== 0) validateHours(true); };
 
     // Service hint
     const svc = $("#fService");
@@ -385,7 +394,7 @@
     const v = parseFloat(raw);
     let msg = "";
     if (raw === "" || isNaN(v)) msg = "Enter the hours worked.";
-    else if (v <= 0) msg = "Hours must be more than 0.";
+    else if (v <= 0) msg = "Enter the hours worked. An entry can't be 0 hours.";
     else if (v > 24) msg = "Hours can't be more than 24.";
     else if (Math.round(v * 4) !== v * 4) msg = "Please use quarter hours: .25, .50 or .75.";
     if (show) $("#hoursErr").textContent = msg;
@@ -536,7 +545,7 @@
     const problems = [];
     if (!f.client_id) problems.push("Choose a client.");
     if (!f.entry_date) problems.push("Pick a date.");
-    if (validateHours(true) === null) problems.push("Fix the hours.");
+    if (validateHours(true) === null) problems.push(f.hours === 0 ? "Enter the hours worked (more than 0)." : "Fix the hours.");
     if (activeServices().length && !f.service_type_id) problems.push("Choose a service.");
     if (!f.description.trim()) problems.push("Add a description.");
     if (f.materials.some((m) => m.name && !(m.quantity > 0))) problems.push("Each material needs a quantity.");
