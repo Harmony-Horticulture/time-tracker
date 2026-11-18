@@ -88,6 +88,15 @@ Supabase's built-in email only sends to members of your Supabase team and only a
 
 ---
 
+## Put the app on your phone
+
+The app installs from the website, with no App Store needed. Send people the app's web address, then:
+
+- **iPhone (Safari):** open the address, tap the **Share** button (the square with an arrow), scroll down and tap **Add to Home Screen**, then **Add**.
+- **Android (Chrome):** open the address, tap the **⋮** menu, then **Add to Home screen** or **Install app**, then **Install**.
+
+A green Harmony icon called **Time Tracker** appears on the home screen. It opens full screen like a normal app and stays signed in. New versions show up automatically after you merge changes on GitHub, the next time the app is opened with signal.
+
 ## Good to know
 
 - **Updating your lists later:** in **Lists**, each tab has an update button. **Services:** export Products and Services from QuickBooks (Sales > Products and services > Export) and upload it. Items with a person's name in them (like "Robbie Stephens Consulting") are offered only to that person; everything else is offered to everyone. **Materials:** download the Materials Price List Google Sheet as .xlsx or .csv (File > Download) and upload it; each material keeps the unit shown in the sheet. **Customers:** see step 8.4.
