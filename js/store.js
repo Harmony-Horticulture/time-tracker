@@ -7,7 +7,7 @@
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY);
 
   const ENTRY_SELECT =
-    "*, client:clients(name,qb_name), " +
+    "*, client:clients(name,qb_name,one_off), " +
     "person:profiles!time_entries_user_id_fkey(full_name,qb_name,email), " +
     "service:service_types(name,qb_item,billable), materials:entry_materials(*)";
 
@@ -21,6 +21,7 @@
       client_id: e.client_id,
       client_name: e.client ? e.client.name : "",
       client_qb_name: e.client ? e.client.qb_name : null,
+      client_one_off: !!(e.client && e.client.one_off),
       property: e.property || "",
       entry_date: e.entry_date,
       hours: Number(e.hours),
@@ -30,6 +31,7 @@
       service_billable: e.service ? e.service.billable !== false : true,
       description: e.description,
       site_minimum: !!e.site_minimum,
+      site_minimum_amount: e.site_minimum_amount == null ? (e.site_minimum ? 0 : null) : Number(e.site_minimum_amount),
       origination: !!e.origination,
       status: e.status,
       approved_at: e.approved_at,
@@ -62,6 +64,21 @@
     if (/does not exist|schema cache|PGRST20/i.test(msg)) return "The database isn't set up yet. Run supabase/01_schema.sql and 02_seed.sql in the Supabase SQL Editor (see docs/SETUP.md).";
     if (/Failed to fetch|NetworkError/i.test(msg)) return "Can't reach the database. Check your internet connection and try again.";
     return msg;
+  }
+
+  const numOrNull = (v) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v));
+  function materialRow(m) {
+    return {
+      name: m.name, unit: m.unit || "each", price: numOrNull(m.price), cost: numOrNull(m.cost),
+      store: m.store || null, unit_size: m.unit_size || null, client_charge: m.client_charge || null, active: m.active !== false,
+    };
+  }
+  function serviceRow(s) {
+    return {
+      name: s.name, help_text: s.help_text || null, qb_item: s.qb_item, category: s.category || null,
+      for_person: s.for_person || null, rate: numOrNull(s.rate), billable: s.billable !== false,
+      sort_order: Number(s.sort_order) || 0, active: s.active !== false,
+    };
   }
 
   // -------------------------------------------------------------------
@@ -149,6 +166,7 @@
           if (f.to) q = q.lte("entry_date", f.to);
           if (f.status) q = q.eq("status", f.status);
           if (f.notExported) q = q.is("qb_exported_at", null);
+          if (f.exported) q = q.not("qb_exported_at", "is", null);
           if (f.since) q = q.gte("entry_date", f.since);
           return q.order("entry_date", { ascending: false }).order("created_at", { ascending: false });
         });
@@ -161,15 +179,16 @@
         const data = await check(await sb.from("time_entries").delete().eq("id", id).select("id"));
         if (!data.length) throw new Error("Locked for billing, contact an admin");
       },
-      async setStatus(ids, status) {
-        await check(await sb.from("time_entries").update({ status }).in("id", ids));
+      // Lets people change entries again and puts them back in the next QuickBooks file
+      async unlock(ids) {
+        await check(await sb.from("time_entries").update({ status: "pending", qb_exported_at: null, qb_exported_by: null }).in("id", ids));
       },
       async markExported(ids) {
         const { data } = await sb.auth.getUser();
         await check(
           await sb
             .from("time_entries")
-            .update({ qb_exported_at: new Date().toISOString(), qb_exported_by: data.user.id })
+            .update({ qb_exported_at: new Date().toISOString(), qb_exported_by: data.user.id, status: "approved" }) // locked once billed
             .in("id", ids)
         );
       },
@@ -193,12 +212,12 @@
         await check(await sb.from("profiles").update(patch).eq("id", id));
       },
       async saveClient(c) {
-        const row = { name: c.name, qb_name: c.qb_name || null, properties: c.properties || [], active: c.active !== false };
+        const row = { name: c.name, qb_name: c.qb_name || null, properties: c.properties || [], one_off: !!c.one_off, active: c.active !== false };
         if (c.id) await check(await sb.from("clients").update(row).eq("id", c.id));
         else await check(await sb.from("clients").insert(row));
       },
       async saveMaterial(m) {
-        const row = { name: m.name, unit: m.unit || "each", price: m.price === "" || m.price == null ? null : Number(m.price), active: m.active !== false };
+        const row = materialRow(m);
         if (m.id) {
           await check(await sb.from("materials").update(row).eq("id", m.id));
           return m.id;
@@ -207,9 +226,18 @@
         return data.id;
       },
       async saveServiceType(s) {
-        const row = { name: s.name, help_text: s.help_text || null, qb_item: s.qb_item, billable: s.billable !== false, sort_order: Number(s.sort_order) || 0, active: s.active !== false };
+        const row = serviceRow(s);
         if (s.id) await check(await sb.from("service_types").update(row).eq("id", s.id));
         else await check(await sb.from("service_types").insert(row));
+      },
+      async importClients(rows, turnOff) {
+        return check(await sb.rpc("import_clients", { p_rows: rows, p_turn_off_missing: !!turnOff }));
+      },
+      async importMaterials(rows, turnOff) {
+        return check(await sb.rpc("import_materials", { p_rows: rows, p_turn_off_missing: !!turnOff }));
+      },
+      async importServices(rows, turnOff) {
+        return check(await sb.rpc("import_services", { p_rows: rows, p_turn_off_missing: !!turnOff }));
       },
       async listNewMaterials() {
         const rows = await check(
@@ -247,7 +275,7 @@
   // Demo (this browser only)
   // -------------------------------------------------------------------
   function makeDemoStore() {
-    const KEY = "hh_time_demo_v2";
+    const KEY = "hh_time_demo_v3";
     const SESSION = "hh_time_demo_session";
     const listeners = [];
     const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
@@ -258,23 +286,20 @@
       const base = window.HH_DEMO_DATA || { clients: [], materials: [] };
       const people = [
         { id: "u-krista", email: "krista@example.com", full_name: "Krista", role: "admin", qb_name: "Krista", active: true },
-        { id: "u-kasey", email: "kasey@example.com", full_name: "Kasey", role: "admin", qb_name: "Kasey", active: true },
+        { id: "u-kasey", email: "kasey@example.com", full_name: "Kasey Harman", role: "admin", qb_name: "Kasey Harman", active: true },
         { id: "u-robbie", email: "robbie@example.com", full_name: "Robbie Stephens", role: "consultant", qb_name: "Robbie Stephens", active: true },
-        { id: "u-kristen", email: "kristen@example.com", full_name: "Kristen", role: "consultant", qb_name: "Kristen", active: true },
-        { id: "u-stephanie", email: "stephanie@example.com", full_name: "Stephanie", role: "technician", qb_name: "Stephanie", active: true },
+        { id: "u-kristen", email: "kristen@example.com", full_name: "Kristen Battafarano", role: "consultant", qb_name: "Kristen Battafarano", active: true },
+        { id: "u-stephanie", email: "stephanie@example.com", full_name: "Stephanie Lara", role: "technician", qb_name: "Stephanie Lara", active: true },
       ];
-      const serviceTypes = [
-        { id: 1, name: "Site inspection", help_text: "Inspections, reports, property checks, irrigation checks, site visits", qb_item: "Consulting Time:Horticultural Consulting; Site Inspection {consultant}", billable: true, sort_order: 1, active: true },
-        { id: 2, name: "Organic / hands-on work", help_text: "Rose pruning, treatments, fertilizing, soil samples, controller work, tank fills", qb_item: "Consulting Time:Horticultural Consulting; {consultant} ORG", billable: true, sort_order: 2, active: true },
-        { id: 3, name: "Consulting", help_text: "Meetings, design and plant selection, installs and crew oversight, training, write-ups", qb_item: "Consulting Time:Horticultural Consulting {consultant}", billable: true, sort_order: 3, active: true },
-      ];
+      const serviceTypes = (base.serviceTypes || []).map((x) => ({ ...x }));
+      const svc = (name) => { const f = serviceTypes.find((x) => x.name === name); return f ? f.id : null; };
       const samples = [
-        ["u-robbie", 1, 1.5, 1, "Inspection and report"],
-        ["u-robbie", 3, 3, 2, "Rose pruning"],
-        ["u-robbie", 8, 1, 3, "Meeting with crew on site"],
-        ["u-kristen", 12, 2, 1, "Irrigation check and report"],
-        ["u-stephanie", 20, 1.25, 2, "Fertilization and tank fill"],
-        ["u-robbie", 25, 0.5, 2, "Controller set"],
+        ["u-robbie", 1, 1.5, svc("Horticultural Consulting; Site Inspection Robbie Stephens"), "Inspection and report"],
+        ["u-robbie", 3, 3, svc("Horticultural Consulting; Robbie Stephens ORG"), "Rose pruning"],
+        ["u-robbie", 8, 1, svc("Horticultural Consulting Robbie Stephens"), "Meeting with crew on site"],
+        ["u-kristen", 12, 2, svc("Horticultural Consulting; Site Inspection Kristen Battafarano"), "Irrigation check and report"],
+        ["u-stephanie", 20, 1.25, svc("Horticultural Technician"), "Fertilization and tank fill"],
+        ["u-robbie", 25, 0.5, svc("Horticultural Consulting; Robbie Stephens ORG"), "Controller set"],
       ];
       const today = new Date();
       const entries = samples.map(([user, client, hours, svc, desc], i) => {
@@ -284,12 +309,12 @@
           id: uid(), user_id: user, client_id: base.clients[client] ? base.clients[client].id : 1,
           property: "", entry_date: iso(d), hours, service_type_id: svc, description: desc,
           site_minimum: false, origination: false, status: i < 2 ? "approved" : "pending",
-          approved_at: i < 2 ? new Date().toISOString() : null, qb_exported_at: null,
+          approved_at: i < 2 ? new Date().toISOString() : null, qb_exported_at: i < 2 ? new Date().toISOString() : null,
           created_at: new Date(Date.now() - i * 1000).toISOString(),
-          materials: i === 1 ? [{ id: 1, material_id: base.materials[0] ? base.materials[0].id : null, name: base.materials[0] ? base.materials[0].name : "Epsom Salt", quantity: 2, unit: "each", unit_price: null, is_new: false }] : [],
+          materials: i === 1 && base.materials[3] ? [{ id: 1, material_id: base.materials[3].id, name: base.materials[3].name, quantity: 2, unit: base.materials[3].unit, unit_price: base.materials[3].price, is_new: false }] : [],
         };
       });
-      return { people, invitations: [], clients: base.clients, materials: base.materials, serviceTypes, entries, history: [], nextId: 1000 };
+      return { people, invitations: [], clients: JSON.parse(JSON.stringify(base.clients)), materials: JSON.parse(JSON.stringify(base.materials)), serviceTypes, entries, history: [], nextId: 1000 };
     }
 
     let db;
@@ -370,6 +395,7 @@
         if (f.since) rows = rows.filter((e) => e.entry_date >= f.since);
         if (f.status) rows = rows.filter((e) => e.status === f.status);
         if (f.notExported) rows = rows.filter((e) => !e.qb_exported_at);
+        if (f.exported) rows = rows.filter((e) => e.qb_exported_at);
         rows.sort((a, b) => (b.entry_date + b.created_at).localeCompare(a.entry_date + a.created_at));
         return rows.map(hydrate);
       },
@@ -382,7 +408,8 @@
         const fields = {
           client_id: Number(entry.client_id), property: (entry.property || "").trim(), entry_date: entry.entry_date,
           hours: Number(entry.hours), service_type_id: entry.service_type_id ? Number(entry.service_type_id) : null,
-          description: entry.description.trim(), site_minimum: !!entry.site_minimum, origination: !!entry.origination,
+          site_minimum_amount: numOrNull(entry.site_minimum_amount), site_minimum: numOrNull(entry.site_minimum_amount) > 0,
+          description: entry.description.trim(), origination: !!entry.origination,
         };
         if (entry.id) {
           const e = db.entries.find((x) => x.id === entry.id);
@@ -409,19 +436,20 @@
         log(id, "delete", e, null);
         save();
       },
-      async setStatus(ids, status) {
+      async unlock(ids) {
+        const status = "pending";
         if (!isAdmin()) throw new Error(friendlyError({ message: "permission denied" }));
         db.entries.forEach((e) => {
           if (!ids.includes(e.id)) return;
           const old = JSON.parse(JSON.stringify(e));
           e.status = status;
-          e.approved_at = status === "approved" ? new Date().toISOString() : null;
+          e.approved_at = null; e.qb_exported_at = null;
           log(e.id, "update", old, JSON.parse(JSON.stringify(e)));
         });
         save();
       },
       async markExported(ids) {
-        db.entries.forEach((e) => { if (ids.includes(e.id)) e.qb_exported_at = new Date().toISOString(); });
+        db.entries.forEach((e) => { if (ids.includes(e.id)) { e.qb_exported_at = new Date().toISOString(); e.status = "approved"; } });
         save();
       },
       async invite({ email, full_name, role }) {
@@ -438,14 +466,14 @@
       },
       async saveClient(c) {
         if (db.clients.some((x) => x.name.toLowerCase() === c.name.toLowerCase() && x.id !== c.id)) throw new Error(friendlyError({ message: "duplicate key" }));
-        const row = { name: c.name, qb_name: c.qb_name || null, properties: c.properties || [], active: c.active !== false };
+        const row = { name: c.name, qb_name: c.qb_name || null, properties: c.properties || [], one_off: !!c.one_off, active: c.active !== false };
         if (c.id) Object.assign(db.clients.find((x) => x.id === c.id), row);
         else db.clients.push({ id: nextId(), ...row });
         save();
       },
       async saveMaterial(m) {
         if (db.materials.some((x) => x.name.toLowerCase() === m.name.toLowerCase() && x.id !== m.id)) throw new Error(friendlyError({ message: "duplicate key" }));
-        const row = { name: m.name, unit: m.unit || "each", price: m.price === "" || m.price == null ? null : Number(m.price), active: m.active !== false };
+        const row = materialRow(m);
         if (m.id) { Object.assign(db.materials.find((x) => x.id === m.id), row); save(); return m.id; }
         const id = nextId();
         db.materials.push({ id, ...row });
@@ -453,10 +481,47 @@
         return id;
       },
       async saveServiceType(s) {
-        const row = { name: s.name, help_text: s.help_text || null, qb_item: s.qb_item, billable: s.billable !== false, sort_order: Number(s.sort_order) || 0, active: s.active !== false };
+        const row = serviceRow(s);
         if (s.id) Object.assign(db.serviceTypes.find((x) => x.id === s.id), row);
         else db.serviceTypes.push({ id: nextId(), ...row });
         save();
+      },
+      async importClients(rows, turnOff) {
+        const ids = new Set(); let added = 0, updated = 0, off = 0;
+        rows.forEach((r) => {
+          const n = (r.full_name || "").trim(); if (!n) return;
+          let c = db.clients.find((x) => (x.qb_name || "").toLowerCase() === n.toLowerCase()) || db.clients.find((x) => x.name.toLowerCase() === n.toLowerCase());
+          if (c) { c.qb_name = n; c.active = true; updated++; } else { c = { id: nextId(), name: n, qb_name: n, properties: [], one_off: false, active: true }; db.clients.push(c); added++; }
+          ids.add(c.id);
+        });
+        if (turnOff) db.clients.forEach((c) => { if (c.active && !ids.has(c.id)) { c.active = false; off++; } });
+        save();
+        return { added, updated, turned_off: off };
+      },
+      async importMaterials(rows, turnOff) {
+        const ids = new Set(); let added = 0, updated = 0, off = 0;
+        rows.forEach((r) => {
+          if (!(r.name || "").trim()) return;
+          let m = db.materials.find((x) => x.name.toLowerCase() === r.name.trim().toLowerCase());
+          if (m) { Object.assign(m, materialRow(r)); updated++; } else { m = { id: nextId(), ...materialRow(r) }; db.materials.push(m); added++; }
+          ids.add(m.id);
+        });
+        if (turnOff) db.materials.forEach((m) => { if (m.active && !ids.has(m.id)) { m.active = false; off++; } });
+        save();
+        return { added, updated, turned_off: off };
+      },
+      async importServices(rows, turnOff) {
+        const ids = new Set(); let added = 0, updated = 0, off = 0;
+        rows.forEach((r) => {
+          if (!(r.name || "").trim()) return;
+          let s = db.serviceTypes.find((x) => x.name.toLowerCase() === r.name.trim().toLowerCase());
+          if (s) { const keep = s.active; Object.assign(s, serviceRow(r), { active: keep, sort_order: s.sort_order }); updated++; }
+          else { s = { id: nextId(), ...serviceRow(r) }; db.serviceTypes.push(s); added++; }
+          ids.add(s.id);
+        });
+        if (turnOff) db.serviceTypes.forEach((x) => { if (x.active && !ids.has(x.id)) { x.active = false; off++; } });
+        save();
+        return { added, updated, turned_off: off };
       },
       async listNewMaterials() {
         const out = [];

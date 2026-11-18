@@ -138,18 +138,20 @@
     { header: "Hours", key: "hours", width: 9, numFmt: HOURS, align: "right" },
     { header: "Description", key: "description", width: 44, wrap: true },
     { header: "Materials", key: "materials", width: 32, wrap: true },
-    { header: "Status", key: "status", width: 11 },
+    { header: "Site min", key: "sitemin", width: 10, numFmt: MONEY, align: "right" },
+    { header: "QuickBooks", key: "status", width: 14 },
   ];
   const entryRow = (e) => ({
     date: fmtDate(e.entry_date),
     person: e.person_name,
-    client: e.client_name,
+    client: e.client_name + (e.client_one_off ? " (one-off)" : ""),
     property: e.property,
     service: e.service_name,
     hours: e.hours,
     description: e.description,
     materials: materialsText(e),
-    status: e.status === "approved" ? "Approved" : "Pending",
+    sitemin: e.site_minimum_amount || null,
+    status: e.qb_exported_at ? "In QuickBooks" : "",
   });
   const byDateAsc = (a, b) => (a.entry_date + (a.created_at || "")).localeCompare(b.entry_date + (b.created_at || ""));
 
@@ -187,21 +189,17 @@
         { header: "Person", key: "person", width: 26 },
         { header: "Total hours", key: "hours", width: 13, numFmt: HOURS, align: "right" },
         { header: "Billable hours", key: "billable", width: 15, numFmt: HOURS, align: "right" },
-        { header: "Approved hours", key: "approved", width: 16, numFmt: HOURS, align: "right" },
-        { header: "Pending hours", key: "pending", width: 15, numFmt: HOURS, align: "right" },
         { header: "Entries", key: "count", width: 10, align: "right" },
       ],
       rows: byPerson.map(({ p, list }) => ({
         person: p.full_name || p.email,
         hours: sumHours(list),
         billable: sumHours(list.filter((e) => e.service_billable)),
-        approved: sumHours(list.filter((e) => e.status === "approved")),
-        pending: sumHours(list.filter((e) => e.status !== "approved")),
         count: list.length,
       })),
       totals: {
         person: "Total", hours: sumHours(entries), billable: sumHours(entries.filter((e) => e.service_billable)),
-        approved: sumHours(entries.filter((e) => e.status === "approved")), pending: sumHours(entries.filter((e) => e.status !== "approved")), count: entries.length,
+        count: entries.length,
       },
     });
     for (const { p, list } of byPerson) {
@@ -253,6 +251,52 @@
     await download(wb, `${clientName} - Time and Materials - ${from || ""} to ${to || ""}.xlsx`);
   }
 
+  // Every client in the range: a summary tab, then one tab per client with its time and materials
+  async function exportAllClientSummaries(entries, { from, to }) {
+    const wb = new ExcelJS.Workbook();
+    const used = new Set(["summary"]);
+    const sub = rangeText(from, to);
+    const byClient = new Map();
+    entries.slice().sort(byDateAsc).forEach((e) => {
+      const k = e.client_name;
+      if (!byClient.has(k)) byClient.set(k, []);
+      byClient.get(k).push(e);
+    });
+    const names = Array.from(byClient.keys()).sort((a, b) => a.localeCompare(b));
+    const matTotal = (list) => list.reduce((s, e) => s + e.materials.reduce((t, m) => t + (m.unit_price == null ? 0 : m.unit_price * m.quantity), 0), 0);
+    const siteMin = (list) => list.reduce((s, e) => s + (e.site_minimum_amount || 0), 0);
+    await brandedSheet(wb, new Set(), {
+      name: "Summary", title: "Client summary", subtitle: sub,
+      columns: [
+        { header: "Client", key: "client", width: 40, wrap: true },
+        { header: "Type", key: "type", width: 12 },
+        { header: "Entries", key: "count", width: 10, align: "right" },
+        { header: "Hours", key: "hours", width: 10, numFmt: HOURS, align: "right" },
+        { header: "Materials", key: "mats", width: 13, numFmt: MONEY, align: "right" },
+        { header: "Site minimums", key: "min", width: 15, numFmt: MONEY, align: "right" },
+      ],
+      rows: names.map((n) => { const l = byClient.get(n); return { client: n, type: l[0].client_one_off ? "One-off" : "Recurring", count: l.length, hours: sumHours(l), mats: matTotal(l), min: siteMin(l) }; }),
+      totals: { client: "Total", count: entries.length, hours: sumHours(entries), mats: matTotal(entries), min: siteMin(entries) },
+    });
+    for (const n of names) {
+      const list = byClient.get(n);
+      await brandedSheet(wb, used, {
+        name: n, title: n, subtitle: sub,
+        columns: [
+          { header: "Date", key: "date", width: 12, numFmt: DATE },
+          { header: "Consultant", key: "person", width: 20 },
+          { header: "Service", key: "service", width: 26, wrap: true },
+          { header: "Description", key: "description", width: 44, wrap: true },
+          { header: "Hours", key: "hours", width: 9, numFmt: HOURS, align: "right" },
+          { header: "Materials", key: "materials", width: 32, wrap: true },
+          { header: "Site min", key: "sitemin", width: 10, numFmt: MONEY, align: "right" },
+        ],
+        rows: list.map(entryRow), totals: { date: "Total", hours: sumHours(list) },
+      });
+    }
+    await download(wb, `Harmony Horticulture Client Summary ${from || ""} to ${to || ""}.xlsx`);
+  }
+
   // TT-21: QuickBooks file in the same layout as the October 2026 bill
   function qbItem(e) {
     const name = e.person_qb_name || "";
@@ -266,7 +310,6 @@
       const reasons = [];
       if (!e.service_type_id) reasons.push("No service type");
       if (/\{consultant\}/.test(e.service_qb_item || "") && !e.person_qb_name) reasons.push(`No QuickBooks name for ${e.person_name}`);
-      if (e.status !== "approved") reasons.push("Not approved");
       (reasons.length ? held : ready).push({ e, reasons });
     });
     return { ready: ready.map((r) => r.e), held };
@@ -303,5 +346,5 @@
     return { sent: list, held };
   }
 
-  window.Exports = { exportEntries, exportTimeByPerson, exportClientSummary, exportQuickBooks, quickBooksCheck };
+  window.Exports = { exportEntries, exportTimeByPerson, exportClientSummary, exportAllClientSummaries, exportQuickBooks, quickBooksCheck };
 })();

@@ -176,12 +176,20 @@
   // =====================================================================
   // App shell and navigation
   // =====================================================================
+  const svg = (d) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ICONS = {
+    log: svg('<path d="M12 5v14M5 12h14"/>'),
+    mytime: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+    review: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    people: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.1.7 3.5 2.8 3.5 5.7"/>'),
+    lists: svg('<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>'),
+  };
   function navItems() {
     const items = [
       { id: "log", label: "Log time" },
       { id: "mytime", label: "My time" },
     ];
-    if (isAdmin()) items.push({ id: "review", label: "Review & export", admin: true }, { id: "people", label: "People", admin: true }, { id: "lists", label: "Lists", admin: true });
+    if (isAdmin()) items.push({ id: "review", label: "Time reports", admin: true }, { id: "people", label: "People", admin: true }, { id: "lists", label: "Lists", admin: true });
     return items;
   }
   function renderNav() {
@@ -190,7 +198,7 @@
     let shownAdmin = false;
     items.forEach((i) => {
       if (i.admin && !shownAdmin) { side += `<div class="nav-label">Admin</div>`; shownAdmin = true; }
-      side += `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${esc(i.label)}</button>`;
+      side += `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${ICONS[i.id]}<span>${esc(i.label)}</span></button>`;
     });
     $("#sideNav").innerHTML = side;
     $("#bottomNav").innerHTML = items.map((i) => `<button type="button" data-view="${i.id}" class="${state.view === i.id ? "active" : ""}">${esc(i.label)}</button>`).join("");
@@ -220,7 +228,7 @@
     $("#authView").classList.add("hidden");
     $("#appView").classList.remove("hidden");
     $("#demoBanner").classList.toggle("hidden", S.mode !== "demo");
-    $("#whoName").textContent = state.me.full_name || state.me.email;
+    $("#whoName").textContent = state.me.email || state.me.full_name;
     $("#whoRole").textContent = roleLabel(state.me.role);
     state.form = null;
     go(state.view);
@@ -232,10 +240,19 @@
   function blankForm() {
     return {
       id: null, user_id: state.me.id, client_id: null, property: "", entry_date: today(), hours: 1,
-      service_type_id: "", description: "", site_minimum: false, origination: false, materials: [],
+      service_type_id: "", description: "", site_minimum_amount: "", origination: false, materials: [],
     };
   }
   const activeServices = () => state.lists.serviceTypes.filter((s) => s.active);
+  // Services naming a person go only to that person; the rest go to everyone
+  function servicesFor(userId) {
+    const p = state.profiles.find((x) => x.id === userId) || state.me;
+    const names = [p.full_name, p.qb_name].filter(Boolean).map((n) => n.toLowerCase().trim());
+    const first = (n) => n.split(/\s+/)[0];
+    const isMine = (s) => { const f = s.for_person.toLowerCase().trim(); return names.some((n) => n === f || first(n) === first(f)); };
+    const list = activeServices();
+    return { mine: list.filter((s) => s.for_person && isMine(s)), everyone: list.filter((s) => !s.for_person) };
+  }
   const activeMaterials = () => state.lists.materials.filter((m) => m.active);
 
   async function renderLog() {
@@ -244,7 +261,10 @@
     const f = state.form;
     const editing = !!f.id;
     const client = clientById(f.client_id);
-    const services = activeServices();
+    const { mine, everyone } = servicesFor(f.user_id);
+    const services = mine.concat(everyone);
+    if (!f.id && !f.service_type_id && mine.length === 1) f.service_type_id = mine[0].id; // their only service is picked for them
+    const svcOpt = (s) => `<option value="${s.id}" ${String(s.id) === String(f.service_type_id) ? "selected" : ""}>${esc(s.name)}${s.billable ? "" : " (non-billable)"}</option>`;
     const forOther = isAdmin() && f.user_id !== state.me.id;
     const hasMic = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -260,7 +280,7 @@
           </div>` : ""}
         <div class="field" id="clientField">
           <label for="fClient">Client <span class="req">*</span></label>
-          ${client ? `<div class="chosen"><span>${esc(client.name)}</span><button type="button" class="ghost small" id="changeClient">Change</button></div>` :
+          ${client ? `<div class="chosen"><span>${esc(client.name)}${client.one_off ? ' <span class="badge oneoff">One-off</span>' : ""}</span><button type="button" class="ghost small" id="changeClient">Change</button></div>` :
             `<input id="fClient" type="search" placeholder="Type 2 or more letters" autocomplete="off" aria-autocomplete="list">
              <div id="clientResults" class="results hidden" role="listbox"></div>`}
         </div>
@@ -282,8 +302,8 @@
             <div id="hoursErr" class="error-text"></div>
           </div>
           ${services.length ? `
-          <div class="field"><label for="fService">Service type <span class="req">*</span></label>
-            <select id="fService"><option value="">Choose…</option>${services.map((s) => `<option value="${s.id}" ${String(s.id) === String(f.service_type_id) ? "selected" : ""}>${esc(s.name)}${s.billable ? "" : " (non-billable)"}</option>`).join("")}</select>
+          <div class="field"><label for="fService">Service <span class="req">*</span></label>
+            <select id="fService"><option value="">Choose…</option>${mine.length ? `<optgroup label="${esc(personName(f.user_id) === "Someone" ? "Yours" : "For " + personName(f.user_id))}">${mine.map(svcOpt).join("")}</optgroup><optgroup label="Everyone">${everyone.map(svcOpt).join("")}</optgroup>` : everyone.map(svcOpt).join("")}</select>
             <div class="hint" id="serviceHint"></div>
           </div>` : ""}
         </div>
@@ -295,7 +315,8 @@
           <div class="hint"><span id="descCount">${f.description.length}</span>/500</div>
         </div>
         <div class="field">
-          <label class="check"><input type="checkbox" id="fSiteMin" ${f.site_minimum ? "checked" : ""}> Site minimum</label>
+          <div class="grid2" style="margin-bottom:10px"><div><label for="fSiteMinAmt">Site minimum ($)</label>
+            <input id="fSiteMinAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Leave blank if none" value="${esc(f.site_minimum_amount)}"></div></div>
           <label class="check"><input type="checkbox" id="fOrig" ${f.origination ? "checked" : ""}> Origination (new work I brought in)</label>
         </div>
         <div class="field">
@@ -315,7 +336,7 @@
 
     // Who (admin)
     const fUser = $("#fUser");
-    if (fUser) fUser.onchange = () => { readForm(); f.user_id = fUser.value; };
+    if (fUser) fUser.onchange = () => { readForm(); f.user_id = fUser.value; f.service_type_id = ""; renderLog(); }; // their own services
 
     // Client search
     if (client) {
@@ -396,12 +417,12 @@
       const q = input.value.trim().toLowerCase();
       let html = "";
       if (q.length < 2) {
-        if (recent.length) html = `<div class="group">Recent clients</div>` + recent.map((c) => `<button type="button" role="option" data-id="${c.id}">${esc(c.name)}</button>`).join("");
+        if (recent.length) html = `<div class="group">Recent clients</div>` + recent.map((c) => `<button type="button" role="option" data-id="${c.id}">${esc(c.name)}${c.one_off ? ' <span class="badge oneoff">One-off</span>' : ""}</button>`).join("");
         else html = `<div class="none">Type 2 or more letters to search.</div>`;
       } else {
         const matches = state.lists.clients.filter((c) => c.active && (c.name.toLowerCase().includes(q) || (c.properties || []).some((p) => p.toLowerCase().includes(q)) || (c.qb_name || "").toLowerCase().includes(q)));
         html = matches.length
-          ? matches.slice(0, 40).map((c) => `<button type="button" role="option" data-id="${c.id}">${esc(c.name)}${c.properties && c.properties.length && c.properties[0] !== c.name ? ` <span class="muted small">· ${esc(c.properties.join(", "))}</span>` : ""}</button>`).join("")
+          ? matches.slice(0, 40).map((c) => `<button type="button" role="option" data-id="${c.id}">${esc(c.name)}${c.one_off ? ' <span class="badge oneoff">One-off</span>' : ""}${c.properties && c.properties.length && c.properties[0] !== c.name ? ` <span class="muted small">· ${esc(c.properties.join(", "))}</span>` : ""}</button>`).join("")
           : `<div class="none">No client found</div>`;
       }
       box.innerHTML = html;
@@ -454,6 +475,10 @@
     };
   }
 
+  function unitLabel(known, m) {
+    if (known) return `<b>${esc(known.unit || "each")}</b>${known.price != null ? `<br><span class="muted">$${Number(known.price).toFixed(2)} / ${esc(known.unit || "each")}</span>` : ""}`;
+    return m && m.name ? '<span class="badge new">New</span>' : "";
+  }
   function renderMaterialRows() {
     const box = $("#matRows");
     const f = state.form;
@@ -462,7 +487,7 @@
       return `<div class="mat-row" data-i="${i}">
         <input class="mat-name" list="materialList" placeholder="Search or type a material" value="${esc(m.name)}" aria-label="Material">
         <input class="mat-qty" type="number" min="0.25" step="0.25" value="${esc(m.quantity)}" aria-label="Quantity">
-        <span class="unit">${known ? esc(known.unit) : m.name ? '<span class="badge new">New</span>' : ""}</span>
+        <span class="unit">${unitLabel(known, m)}</span>
         <button type="button" class="ghost" aria-label="Remove material" data-remove="${i}">✕</button>
       </div>`;
     }).join("");
@@ -471,7 +496,7 @@
       // Only update the unit / New label so moving to the next field isn't disturbed
       const row = inp.closest(".mat-row");
       const m = state.form.materials[Number(row.dataset.i)];
-      if (m) $(".unit", row).innerHTML = m.is_new ? '<span class="badge new">New</span>' : esc(m.unit || "");
+      if (m) $(".unit", row).innerHTML = unitLabel(state.lists.materials.find((x) => x.id === m.material_id), m);
     }));
     $$("[data-remove]", box).forEach((b) => (b.onclick = () => { readForm(); f.materials.splice(Number(b.dataset.remove), 1); renderMaterialRows(); }));
   }
@@ -487,7 +512,7 @@
     f.hours = isNaN(h) ? 0 : h;
     if ($("#fService")) f.service_type_id = $("#fService").value;
     f.description = $("#fDesc").value;
-    f.site_minimum = $("#fSiteMin").checked;
+    f.site_minimum_amount = $("#fSiteMinAmt").value.trim();
     f.origination = $("#fOrig").checked;
     f.materials = $$(".mat-row").map((row) => {
       const name = $(".mat-name", row).value.trim();
@@ -512,9 +537,10 @@
     if (!f.client_id) problems.push("Choose a client.");
     if (!f.entry_date) problems.push("Pick a date.");
     if (validateHours(true) === null) problems.push("Fix the hours.");
-    if (activeServices().length && !f.service_type_id) problems.push("Choose a service type.");
+    if (activeServices().length && !f.service_type_id) problems.push("Choose a service.");
     if (!f.description.trim()) problems.push("Add a description.");
     if (f.materials.some((m) => m.name && !(m.quantity > 0))) problems.push("Each material needs a quantity.");
+    if (f.site_minimum_amount !== "" && !(Number(f.site_minimum_amount) >= 0)) problems.push("Site minimum must be a dollar amount.");
     if (problems.length) { err.textContent = problems.join(" "); return; }
 
     // TT-06: warn for future dates or more than 7 days back
@@ -530,7 +556,7 @@
         {
           id: f.id || "", user_id: f.user_id, client_id: f.client_id, property: f.property, entry_date: f.entry_date,
           hours: f.hours, service_type_id: f.service_type_id || "", description: f.description.trim(),
-          site_minimum: f.site_minimum, origination: f.origination,
+          site_minimum_amount: f.site_minimum_amount, origination: f.origination,
         },
         f.materials.filter((m) => m.name).map((m) => ({ ...m, material_id: m.material_id || "", unit_price: m.unit_price == null ? "" : m.unit_price }))
       );
@@ -565,15 +591,15 @@
 
   // ---------- shared entry display ----------
   function entryHTML(e, showActions, showPerson) {
-    const locked = e.status === "approved";
+    const locked = !!e.qb_exported_at || e.status === "approved"; // locked once it's in a QuickBooks file
     return `<div class="entry">
       <div style="min-width:0">
-        <div class="title">${esc(e.client_name)}${e.property && e.property !== e.client_name ? ` <span class="muted small">· ${esc(e.property)}</span>` : ""}
-          <span class="badge ${locked ? "approved" : "pending"}">${locked ? "Approved" : "Pending"}</span>${e.qb_exported_at ? `<span class="badge sent">In QuickBooks file</span>` : ""}</div>
+        <div class="title">${esc(e.client_name)}${e.client_one_off ? ' <span class="badge oneoff">One-off</span>' : ""}${e.property && e.property !== e.client_name ? ` <span class="muted small">· ${esc(e.property)}</span>` : ""}
+          ${locked ? `<span class="badge sent">In QuickBooks</span>` : ""}</div>
         <div class="desc">${esc(e.description)}</div>
-        <div class="meta">${[showPerson ? esc(e.person_name) : "", e.service_name ? esc(e.service_name) : "", e.site_minimum ? "Site minimum" : "", e.origination ? "Origination" : "",
-          e.materials.length ? "Materials: " + e.materials.map((m) => `${esc(m.name)} × ${m.quantity}${m.is_new ? " (new)" : ""}`).join(", ") : ""].filter(Boolean).join(" · ")}</div>
-        ${showActions ? `<div class="btn-row" style="margin-top:6px">${locked && !isAdmin() ? `<span class="small muted">Locked for billing, contact an admin</span>` :
+        <div class="meta">${[showPerson ? esc(e.person_name) : "", e.service_name ? esc(e.service_name) : "", e.site_minimum_amount ? `Site minimum $${Number(e.site_minimum_amount).toFixed(2)}` : e.site_minimum ? "Site minimum" : "", e.origination ? "Origination" : "",
+          e.materials.length ? "Materials: " + e.materials.map((m) => `${esc(m.name)} × ${m.quantity}${m.unit && m.unit !== "each" ? " " + esc(m.unit) : ""}${m.is_new ? " (new)" : ""}`).join(", ") : ""].filter(Boolean).join(" · ")}</div>
+        ${showActions ? `<div class="btn-row" style="margin-top:6px">${locked && !isAdmin() ? `<span class="small muted">Already in a QuickBooks file. Ask an admin if it needs changing.</span>` :
           `<button type="button" class="secondary small" data-edit="${esc(e.id)}">Edit</button><button type="button" class="danger small" data-del="${esc(e.id)}">Delete</button>`}</div>` : ""}
       </div>
       <div class="hrs">${fmtH(e.hours)} h</div>
@@ -590,7 +616,7 @@
   function editEntry(e, returnView) {
     state.form = {
       id: e.id, user_id: e.user_id, client_id: e.client_id, property: e.property, entry_date: e.entry_date, hours: e.hours,
-      service_type_id: e.service_type_id || "", description: e.description, site_minimum: e.site_minimum, origination: e.origination,
+      service_type_id: e.service_type_id || "", description: e.description, site_minimum_amount: e.site_minimum_amount == null ? "" : e.site_minimum_amount, origination: e.origination,
       materials: e.materials.map((m) => ({ ...m })),
     };
     state.returnView = returnView;
@@ -638,12 +664,12 @@
       const rows = await S.listEntries({ userId: state.me.id, from: ws, to: we });
       if (state.view !== "mytime") return;
       const total = sumH(rows);
-      const pending = sumH(rows.filter((e) => e.status !== "approved"));
+      const pending = sumH(rows.filter((e) => !e.qb_exported_at));
       const todayRows = rows.filter((e) => e.entry_date === today());
       $("#weekStats").innerHTML = `
         <div class="stat"><div class="label">Today</div><div class="num">${fmtH(sumH(todayRows))}</div></div>
         <div class="stat"><div class="label">This week</div><div class="num">${fmtH(total)}</div></div>
-        <div class="stat"><div class="label">Pending approval</div><div class="num">${fmtH(pending)}</div></div>`;
+        <div class="stat"><div class="label">Not yet in QuickBooks</div><div class="num">${fmtH(pending)}</div></div>`;
       let html = "";
       for (let i = 0; i < 7; i++) {
         const d = addDays(ws, i);
@@ -662,10 +688,10 @@
   }
 
   // =====================================================================
-  // Admin: review, approve, export (TT-18 to TT-22)
+  // Admin: review and export (TT-18 to TT-22)
   // =====================================================================
   function reviewDefaults() {
-    return { from: monthStart(), to: today(), userId: "", clientId: "", status: "", notExported: false };
+    return { from: monthStart(), to: today(), userId: "", clientId: "", status: "" };
   }
   async function renderReview() {
     if (!isAdmin()) return;
@@ -674,33 +700,32 @@
     const r = state.review;
     const client = clientById(r.clientId);
     el.innerHTML = `
-      <div class="page-head"><div><p class="eyebrow">Admin</p><h1>Review & export</h1></div></div>
+      <div class="page-head"><div><p class="eyebrow">Admin · download reports and the QuickBooks file</p><h1>Time reports</h1></div></div>
       <div class="card">
         <div class="grid4">
           <div class="field"><label for="rvFrom">From</label><input type="date" id="rvFrom" value="${esc(r.from)}"></div>
           <div class="field"><label for="rvTo">To</label><input type="date" id="rvTo" value="${esc(r.to)}"></div>
           <div class="field"><label for="rvPerson">Person</label>
             <select id="rvPerson"><option value="">Everyone</option>${state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === r.userId ? "selected" : ""}>${esc(p.full_name || p.email)}</option>`).join("")}</select></div>
-          <div class="field"><label for="rvStatus">Status</label>
-            <select id="rvStatus"><option value="">All</option><option value="pending" ${r.status === "pending" ? "selected" : ""}>Pending</option><option value="approved" ${r.status === "approved" ? "selected" : ""}>Approved</option></select></div>
+          <div class="field"><label for="rvStatus">QuickBooks</label>
+            <select id="rvStatus"><option value="">All</option><option value="open" ${r.status === "open" ? "selected" : ""}>Not yet in a QuickBooks file</option><option value="sent" ${r.status === "sent" ? "selected" : ""}>In a QuickBooks file</option></select></div>
         </div>
         <div class="grid2">
           <div class="field"><label for="rvClient">Client</label>
             <input id="rvClient" list="rvClientList" placeholder="All clients" value="${esc(client ? client.name : "")}">
             <datalist id="rvClientList">${state.lists.clients.map((c) => `<option value="${esc(c.name)}">`).join("")}</datalist></div>
-          <div class="field" style="padding-top:28px"><label class="check"><input type="checkbox" id="rvNotExp" ${r.notExported ? "checked" : ""}> Only time not yet in a QuickBooks file</label></div>
+
         </div>
       </div>
       <div class="stat-row" id="rvStats"></div>
       <div class="card">
         <div class="btn-row" style="margin-bottom:12px">
-          <button type="button" id="rvApprove">Approve selected</button>
           <button type="button" class="secondary" id="rvUnlock">Unlock selected</button>
           <span style="flex:1"></span>
           <button type="button" class="secondary" id="rvExport">Download this list</button>
           <button type="button" class="secondary" id="rvByPerson">Time by person</button>
           <button type="button" class="secondary" id="rvClientSum">Client summary</button>
-          <button type="button" class="secondary" id="rvQB">QuickBooks file</button>
+          <button type="button" id="rvQB">QuickBooks file</button>
         </div>
         <div class="table-wrap" id="rvTable"><p class="muted">Loading…</p></div>
       </div>`;
@@ -710,7 +735,6 @@
     $("#rvTo").onchange = (e) => { r.to = e.target.value; reload(); };
     $("#rvPerson").onchange = (e) => { r.userId = e.target.value; reload(); };
     $("#rvStatus").onchange = (e) => { r.status = e.target.value; reload(); };
-    $("#rvNotExp").onchange = (e) => { r.notExported = e.target.checked; reload(); };
     $("#rvClient").onchange = (e) => {
       const v = e.target.value.trim().toLowerCase();
       const c = state.lists.clients.find((x) => x.name.toLowerCase() === v);
@@ -721,29 +745,29 @@
 
     let rows = [];
     try {
-      rows = await S.listEntries({ from: r.from, to: r.to, userId: r.userId, clientId: r.clientId, status: r.status, notExported: r.notExported });
+      rows = await S.listEntries({ from: r.from, to: r.to, userId: r.userId, clientId: r.clientId, notExported: r.status === "open", exported: r.status === "sent" });
     } catch (e) { $("#rvTable").textContent = S.friendlyError(e); return; }
     if (state.view !== "review") return;
 
     $("#rvStats").innerHTML = `
       <div class="stat"><div class="label">Entries</div><div class="num">${rows.length}</div></div>
       <div class="stat"><div class="label">Hours</div><div class="num">${fmtH(sumH(rows))}</div></div>
-      <div class="stat"><div class="label">Pending hours</div><div class="num">${fmtH(sumH(rows.filter((e) => e.status !== "approved")))}</div></div>
-      <div class="stat"><div class="label">Approved hours</div><div class="num">${fmtH(sumH(rows.filter((e) => e.status === "approved")))}</div></div>`;
+      <div class="stat"><div class="label">Not yet in QuickBooks</div><div class="num">${fmtH(sumH(rows.filter((e) => !e.qb_exported_at)))}</div></div>
+      <div class="stat"><div class="label">In QuickBooks</div><div class="num">${fmtH(sumH(rows.filter((e) => e.qb_exported_at)))}</div></div>`;
 
     $("#rvTable").innerHTML = rows.length ? `
       <table>
-        <thead><tr><th><input type="checkbox" id="rvAll" aria-label="Select all"></th><th>Date</th><th>Person</th><th>Client</th><th>Service</th><th class="num">Hours</th><th>Description</th><th>Materials</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th><input type="checkbox" id="rvAll" aria-label="Select all"></th><th>Date</th><th>Person</th><th>Client</th><th>Service</th><th class="num">Hours</th><th>Description</th><th>Materials</th><th>QuickBooks</th><th></th></tr></thead>
         <tbody>${rows.map((e) => `<tr>
           <td><input type="checkbox" class="rvSel" value="${esc(e.id)}" aria-label="Select entry"></td>
           <td style="white-space:nowrap">${esc(niceDate(e.entry_date, { month: "short", day: "numeric" }))}</td>
           <td>${esc(e.person_name)}</td>
-          <td>${esc(e.client_name)}${e.property && e.property !== e.client_name ? `<div class="small muted">${esc(e.property)}</div>` : ""}</td>
+          <td>${esc(e.client_name)}${e.client_one_off ? ' <span class="badge oneoff">One-off</span>' : ""}${e.property && e.property !== e.client_name ? `<div class="small muted">${esc(e.property)}</div>` : ""}</td>
           <td>${esc(e.service_name)}</td>
           <td class="num">${fmtH(e.hours)}</td>
           <td>${esc(e.description)}</td>
-          <td>${e.materials.map((m) => `${esc(m.name)} × ${m.quantity}${m.is_new ? ' <span class="badge new">New</span>' : ""}`).join("<br>")}</td>
-          <td><span class="badge ${e.status === "approved" ? "approved" : "pending"}">${e.status === "approved" ? "Approved" : "Pending"}</span>${e.qb_exported_at ? '<br><span class="badge sent">QB file</span>' : ""}</td>
+          <td>${e.materials.map((m) => `${esc(m.name)} × ${m.quantity}${m.unit && m.unit !== "each" ? " " + esc(m.unit) : ""}${m.is_new ? ' <span class="badge new">New</span>' : ""}`).join("<br>")}</td>
+          <td>${e.qb_exported_at ? '<span class="badge sent">In QuickBooks</span>' : ""}</td>
           <td style="white-space:nowrap"><button type="button" class="ghost small" data-edit="${esc(e.id)}">Edit</button><button type="button" class="ghost small" data-hist="${esc(e.id)}">History</button></td>
         </tr>`).join("")}</tbody>
       </table>` : `<p class="muted">No time matches these filters.</p>`;
@@ -754,16 +778,11 @@
     $$("[data-edit]", $("#rvTable")).forEach((b) => (b.onclick = () => editEntry(rows.find((e) => e.id === b.dataset.edit), "review")));
     $$("[data-hist]", $("#rvTable")).forEach((b) => (b.onclick = () => showHistory(rows.find((e) => e.id === b.dataset.hist))));
 
-    $("#rvApprove").onclick = async () => {
-      const ids = selected();
-      if (!ids.length) return toast("Tick the entries to approve first.");
-      try { await S.setStatus(ids, "approved"); toast(`${ids.length} approved and locked.`); reload(); } catch (e) { fail(e); }
-    };
     $("#rvUnlock").onclick = async () => {
       const ids = selected();
       if (!ids.length) return toast("Tick the entries to unlock first.");
-      if (!(await confirmBox("Unlock entries?", "The person will be able to change these entries again, and they'll need approving again.", "Unlock"))) return;
-      try { await S.setStatus(ids, "pending"); toast(`${ids.length} unlocked.`); reload(); } catch (e) { fail(e); }
+      if (!(await confirmBox("Unlock entries?", "The person will be able to change these entries again, and they'll go into the next QuickBooks file again. Only do this if you'll fix them in QuickBooks too.", "Unlock"))) return;
+      try { await S.unlock(ids); toast(`${ids.length} unlocked.`); reload(); } catch (e) { fail(e); }
     };
     $("#rvExport").onclick = () => Exports.exportEntries(rows, {
       title: "Time review", withPerson: true,
@@ -772,10 +791,15 @@
     }).catch(fail);
     $("#rvByPerson").onclick = () => byPersonModal();
     $("#rvClientSum").onclick = async () => {
-      if (!client) return toast("Pick a client in the filter first.");
       try {
-        const list = await S.listEntries({ clientId: client.id, from: r.from, to: r.to });
-        await Exports.exportClientSummary(list, client.name, { from: r.from, to: r.to });
+        if (client) {
+          const list = await S.listEntries({ clientId: client.id, from: r.from, to: r.to });
+          await Exports.exportClientSummary(list, client.name, { from: r.from, to: r.to });
+        } else { // no client picked: every client with time in the range, one tab each
+          const list = await S.listEntries({ from: r.from, to: r.to, userId: r.userId });
+          if (!list.length) return toast("No time in this date range.");
+          await Exports.exportAllClientSummaries(list, { from: r.from, to: r.to });
+        }
       } catch (e) { fail(e); }
     };
     $("#rvQB").onclick = () => quickBooksModal();
@@ -814,7 +838,7 @@
     const r = state.review;
     modal(`
       <h2>QuickBooks file</h2>
-      <p class="small muted">Approved, billable time and materials, in the same columns as your QuickBooks bill sheet (Product/Service, Description, Qty, Customer). Entries already in a QuickBooks file are left out so nothing is billed twice.</p>
+      <p class="small muted">All billable time and materials, in the same columns as your QuickBooks bill sheet (Product/Service, Description, Qty, Customer). Entries already in a QuickBooks file are left out so nothing is billed twice.</p>
       <div class="grid2">
         <div class="field"><label for="qbFrom">From</label><input type="date" id="qbFrom" value="${esc(r.from)}"></div>
         <div class="field"><label for="qbTo">To</label><input type="date" id="qbTo" value="${esc(r.to)}"></div>
@@ -843,7 +867,7 @@
   async function showHistory(e) {
     let rows = [];
     try { rows = await S.entryHistory(e.id); } catch (err) { return fail(err); }
-    const fields = { client_id: "Client", property: "Property", entry_date: "Date", hours: "Hours", service_type_id: "Service", description: "Description", site_minimum: "Site minimum", origination: "Origination", status: "Status", qb_exported_at: "QuickBooks file" };
+    const fields = { client_id: "Client", property: "Property", entry_date: "Date", hours: "Hours", service_type_id: "Service", description: "Description", site_minimum_amount: "Site minimum $", origination: "Origination", status: "Status", qb_exported_at: "QuickBooks file" };
     const show = (k, v) => {
       if (k === "client_id") { const c = clientById(v); return c ? c.name : v; }
       if (k === "service_type_id") { const s = state.lists.serviceTypes.find((x) => x.id === Number(v)); return s ? s.name : "—"; }
@@ -874,7 +898,7 @@
       <div class="page-head"><div><p class="eyebrow">Admin</p><h1>People</h1></div></div>
       <div class="card">
         <h2>Invite someone</h2>
-        <p class="small muted">They get an email with a link to set their password. Only invited people can get in.<br><b>Consultant</b> and <b>Technician</b> log and see only their own time. <b>Admin</b> also sees everyone's time, approves it, downloads reports and manages people and lists.</p>
+        <p class="small muted">They get an email with a link to set their password. Only invited people can get in.<br><b>Consultant</b> and <b>Technician</b> log and see only their own time. <b>Admin</b> also sees everyone's time, downloads reports and manages people and lists.</p>
         <div class="grid4">
           <div class="field"><label for="ivName">Name <span class="req">*</span></label><input id="ivName"></div>
           <div class="field"><label for="ivEmail">Email <span class="req">*</span></label><input id="ivEmail" type="email"></div>
@@ -935,30 +959,80 @@
   }
   async function refreshLists() { state.lists = await S.loadLists(); }
 
+  // Shared "update from a file" window for clients, materials and services
+  function importModal({ title, intro, accept, turnOffLabel, parse, save }) {
+    modal(`
+      <h2>${esc(title)}</h2>
+      <div class="small muted" style="margin-bottom:12px">${intro}</div>
+      <div class="field"><label for="imFile">File</label><input id="imFile" type="file" accept="${accept}"></div>
+      <div class="field"><label class="check"><input type="checkbox" id="imOff"> ${esc(turnOffLabel)}</label></div>
+      <div id="imInfo" class="small"></div>
+      <div class="btn-row" style="justify-content:flex-end;margin-top:12px"><button class="secondary" data-close>Cancel</button><button data-go disabled>Update list</button></div>`,
+    (m, close) => {
+      let rows = null;
+      $("[data-close]", m).onclick = close;
+      $("#imFile", m).onchange = async (ev) => {
+        const file = ev.target.files[0];
+        rows = null; $("[data-go]", m).disabled = true;
+        if (!file) return;
+        try {
+          rows = parse(await Importers.readFileRows(file));
+          $("#imInfo", m).textContent = `Found ${rows.length} rows. Click Update list to load them.`;
+          $("[data-go]", m).disabled = !rows.length;
+        } catch (e) { $("#imInfo", m).innerHTML = `<span class="error-text">${esc(e.message)}</span>`; }
+      };
+      $("[data-go]", m).onclick = async () => {
+        try {
+          const r = await save(rows, $("#imOff", m).checked);
+          await refreshLists(); close();
+          toast(`${r.added} added, ${r.updated} updated${r.turned_off ? `, ${r.turned_off} turned off` : ""}.`);
+          renderLists();
+        } catch (e) { fail(e); }
+      };
+    });
+  }
+
   function renderClientsTab(body) {
     body.innerHTML = `
-      <div class="btn-row" style="margin-bottom:12px"><input id="clSearch" type="search" placeholder="Search clients" style="max-width:320px"><button type="button" id="clAdd">+ Add client</button></div>
+      <div class="btn-row" style="margin-bottom:12px">
+        <input id="clSearch" type="search" placeholder="Search clients" style="max-width:320px">
+        <select id="clType" style="max-width:180px"><option value="">All customers</option><option value="recurring">Recurring</option><option value="oneoff">One-off</option></select>
+        <button type="button" id="clAdd">+ Add client</button>
+        <button type="button" class="secondary" id="clImport">Update from QuickBooks</button>
+      </div>
       <div class="table-wrap" id="clTable"></div>
-      <p class="hint">Turn a client off instead of deleting it: it disappears from search but old entries keep the name.</p>`;
+      <p class="hint">Customers are matched on their QuickBooks full name, so two customers with the same short name stay separate. Turn a client off instead of deleting it: it disappears from search but old entries keep the name.</p>`;
     const draw = () => {
       const q = $("#clSearch").value.trim().toLowerCase();
-      const list = state.lists.clients.filter((c) => !q || c.name.toLowerCase().includes(q) || (c.qb_name || "").toLowerCase().includes(q));
-      $("#clTable").innerHTML = `<table><thead><tr><th>Client</th><th>QuickBooks customer</th><th>Properties</th><th>Active</th><th></th></tr></thead><tbody>
-        ${list.slice(0, 150).map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.qb_name || "same")}</td><td>${esc((c.properties || []).join(", "))}</td><td>${c.active ? "Yes" : "No"}</td><td><button type="button" class="ghost small" data-cl="${c.id}">Edit</button></td></tr>`).join("")}
+      const type = $("#clType").value;
+      const list = state.lists.clients.filter((c) => (!q || c.name.toLowerCase().includes(q) || (c.qb_name || "").toLowerCase().includes(q))
+        && (!type || (type === "oneoff") === !!c.one_off));
+      $("#clTable").innerHTML = `<table><thead><tr><th>Client</th><th>QuickBooks full name</th><th>Type</th><th>Properties</th><th>Active</th><th></th></tr></thead><tbody>
+        ${list.slice(0, 150).map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.qb_name || "—")}</td><td>${c.one_off ? '<span class="badge oneoff">One-off</span>' : "Recurring"}</td><td>${esc((c.properties || []).join(", "))}</td><td>${c.active ? "Yes" : "No"}</td><td><button type="button" class="ghost small" data-cl="${c.id}">Edit</button></td></tr>`).join("")}
         </tbody></table>${list.length > 150 ? `<p class="hint">Showing 150 of ${list.length}. Search to narrow it down.</p>` : ""}`;
       $$("[data-cl]").forEach((b) => (b.onclick = () => clientModal(clientById(b.dataset.cl))));
     };
     $("#clSearch").oninput = draw;
+    $("#clType").onchange = draw;
     $("#clAdd").onclick = () => clientModal(null);
+    $("#clImport").onclick = () => importModal({
+      title: "Update customers from QuickBooks",
+      intro: "In QuickBooks, go to <b>Sales &gt; Customers</b>, click the export icon and choose <b>Export to Excel</b>. Choose that file here. Customers are matched on their <b>full name</b>; new ones are added and existing ones keep their properties and one-off setting.",
+      accept: ".xlsx,.csv",
+      turnOffLabel: "Turn off customers that aren't in this file",
+      parse: Importers.parseQuickBooksCustomers,
+      save: (rows, off) => S.importClients(rows, off),
+    });
     draw();
   }
   function clientModal(c) {
-    c = c || { name: "", qb_name: "", properties: [], active: true };
+    c = c || { name: "", qb_name: "", properties: [], one_off: false, active: true };
     modal(`
       <h2>${c.id ? "Edit client" : "Add client"}</h2>
       <div class="field"><label for="cmName">Client name <span class="req">*</span></label><input id="cmName" value="${esc(c.name)}"></div>
-      <div class="field"><label for="cmQB">QuickBooks customer name</label><input id="cmQB" value="${esc(c.qb_name || "")}" placeholder="Leave blank if it's the same"><div class="hint">Must match QuickBooks exactly, for example "Azure".</div></div>
+      <div class="field"><label for="cmQB">QuickBooks full name</label><input id="cmQB" value="${esc(c.qb_name || "")}" placeholder="Exactly as in QuickBooks"><div class="hint">Used to match customers and on the QuickBooks file.</div></div>
       <div class="field"><label for="cmProps">Properties</label><textarea id="cmProps" placeholder="One per line">${esc((c.properties || []).join("\n"))}</textarea></div>
+      <div class="field"><label class="check"><input type="checkbox" id="cmOneOff" ${c.one_off ? "checked" : ""}> One-off customer (not recurring)</label></div>
       <div class="field"><label class="check"><input type="checkbox" id="cmActive" ${c.active ? "checked" : ""}> Active</label></div>
       <div class="btn-row" style="justify-content:flex-end"><button class="secondary" data-close>Cancel</button><button data-go>Save</button></div>`,
     (m, close) => {
@@ -967,21 +1041,33 @@
         const name = $("#cmName", m).value.trim();
         if (!name) return toast("Client name is needed.", true);
         try {
-          await S.saveClient({ id: c.id, name, qb_name: $("#cmQB", m).value.trim(), properties: $("#cmProps", m).value.split("\n").map((s) => s.trim()).filter(Boolean), active: $("#cmActive", m).checked });
+          await S.saveClient({ id: c.id, name, qb_name: $("#cmQB", m).value.trim(), properties: $("#cmProps", m).value.split("\n").map((s) => s.trim()).filter(Boolean), one_off: $("#cmOneOff", m).checked, active: $("#cmActive", m).checked });
           await refreshLists(); close(); toast("Client saved."); renderLists();
         } catch (e) { fail(e); }
       };
     });
   }
 
+  const money2 = (v) => (v == null || v === "" ? "—" : "$" + Number(v).toFixed(2));
   function renderMaterialsTab(body) {
     body.innerHTML = `
-      <div class="btn-row" style="margin-bottom:12px"><button type="button" id="mtAdd">+ Add material</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Material</th><th>Unit</th><th class="num">Price</th><th>Active</th><th></th></tr></thead><tbody>
-      ${state.lists.materials.map((m) => `<tr><td>${esc(m.name)}</td><td>${esc(m.unit)}</td><td class="num">${m.price == null ? "—" : "$" + Number(m.price).toFixed(2)}</td><td>${m.active ? "Yes" : "Retired"}</td><td><button type="button" class="ghost small" data-mt="${m.id}">Edit</button></td></tr>`).join("")}
+      <div class="btn-row" style="margin-bottom:12px">
+        <button type="button" id="mtAdd">+ Add material</button>
+        <button type="button" class="secondary" id="mtImport">Update from Materials Price List</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Material</th><th>Store</th><th>Unit</th><th class="num">Client price per unit</th><th class="num">Our cost</th><th>Package size</th><th>Active</th><th></th></tr></thead><tbody>
+      ${state.lists.materials.map((m) => `<tr><td>${esc(m.name)}</td><td>${esc(m.store || "")}</td><td>${esc(m.unit)}</td><td class="num">${money2(m.price)}</td><td class="num">${money2(m.cost)}</td><td class="small">${esc(m.unit_size || "")}</td><td>${m.active ? "Yes" : "Retired"}</td><td><button type="button" class="ghost small" data-mt="${m.id}">Edit</button></td></tr>`).join("")}
       </tbody></table></div>
-      <p class="hint">Retired materials stop showing in the list but stay on old entries.</p>`;
+      <p class="hint">People pick a material, then enter how many of its unit they used (for example 3 tbsp). Retired materials stop showing in the list but stay on old entries.</p>`;
     $("#mtAdd").onclick = () => materialModal(null);
+    $("#mtImport").onclick = () => importModal({
+      title: "Update from Materials Price List",
+      intro: "Open the <b>Materials Price List</b> Google Sheet, go to <b>File &gt; Download &gt; Microsoft Excel (.xlsx)</b>, and choose that file here. The client charge column sets each material's unit and price (for example \"$.20 / tbsp\").",
+      accept: ".xlsx,.csv",
+      turnOffLabel: "Retire materials that aren't in this file",
+      parse: Importers.parseMaterialsSheet,
+      save: (rows, off) => S.importMaterials(rows, off),
+    });
     $$("[data-mt]").forEach((b) => (b.onclick = () => materialModal(state.lists.materials.find((x) => x.id === Number(b.dataset.mt)))));
   }
   function materialModal(mat, after) {
@@ -990,9 +1076,12 @@
       <h2>${mat.id ? "Edit material" : "Add material"}</h2>
       <div class="field"><label for="mmName">Name <span class="req">*</span></label><input id="mmName" value="${esc(mat.name)}"></div>
       <div class="grid2">
-        <div class="field"><label for="mmUnit">Unit</label><input id="mmUnit" value="${esc(mat.unit || "each")}" placeholder="each, bag, yard, gallon"></div>
-        <div class="field"><label for="mmPrice">Client price ($)</label><input id="mmPrice" type="number" step="0.01" min="0" value="${mat.price == null ? "" : esc(mat.price)}"></div>
+        <div class="field"><label for="mmUnit">Unit people enter</label><input id="mmUnit" value="${esc(mat.unit || "each")}" placeholder="tbsp, cup, oz, ft, each"></div>
+        <div class="field"><label for="mmPrice">Client price per unit ($)</label><input id="mmPrice" type="number" step="0.01" min="0" value="${mat.price == null ? "" : esc(mat.price)}"></div>
+        <div class="field"><label for="mmStore">Store</label><input id="mmStore" value="${esc(mat.store || "")}"></div>
+        <div class="field"><label for="mmCost">Our cost ($)</label><input id="mmCost" type="number" step="0.01" min="0" value="${mat.cost == null ? "" : esc(mat.cost)}"></div>
       </div>
+      <div class="field"><label for="mmSize">Package size</label><input id="mmSize" value="${esc(mat.unit_size || "")}" placeholder="e.g. 5 lbs = 80 oz"></div>
       <div class="field"><label class="check"><input type="checkbox" id="mmActive" ${mat.active ? "checked" : ""}> Active (uncheck to retire)</label></div>
       <div class="btn-row" style="justify-content:flex-end"><button class="secondary" data-close>Cancel</button><button data-go>Save</button></div>`,
     (m, close) => {
@@ -1001,7 +1090,10 @@
         const name = $("#mmName", m).value.trim();
         if (!name) return toast("Name is needed.", true);
         try {
-          const id = await S.saveMaterial({ id: mat.id, name, unit: $("#mmUnit", m).value.trim(), price: $("#mmPrice", m).value, active: $("#mmActive", m).checked });
+          const id = await S.saveMaterial({
+            id: mat.id, name, unit: $("#mmUnit", m).value.trim(), price: $("#mmPrice", m).value, store: $("#mmStore", m).value.trim(),
+            cost: $("#mmCost", m).value, unit_size: $("#mmSize", m).value.trim(), client_charge: mat.client_charge, active: $("#mmActive", m).checked,
+          });
           if (after) await after(id);
           await refreshLists(); close(); toast("Material saved."); renderLists();
         } catch (e) { fail(e); }
@@ -1032,33 +1124,48 @@
 
   function renderServicesTab(body) {
     body.innerHTML = `
-      <p class="small muted">Everyone picks one of these on each entry. The QuickBooks name is used in the QuickBooks file; {consultant} is replaced with each person's QuickBooks name.</p>
-      <div class="btn-row" style="margin-bottom:12px"><button type="button" id="svAdd">+ Add service type</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Service type</th><th>QuickBooks Product/Service</th><th>Billable</th><th>Active</th><th></th></tr></thead><tbody>
-      ${state.lists.serviceTypes.map((s) => `<tr><td>${esc(s.name)}<div class="small muted">${esc(s.help_text || "")}</div></td><td class="small">${esc(s.qb_item)}</td><td>${s.billable ? "Yes" : "No"}</td><td>${s.active ? "Yes" : "No"}</td><td><button type="button" class="ghost small" data-sv="${s.id}">Edit</button></td></tr>`).join("")}
+      <p class="small muted">These come from your QuickBooks Products and Services list. A service with someone's name is only offered to that person; the rest are offered to everyone. Turn off any you don't log time against.</p>
+      <div class="btn-row" style="margin-bottom:12px">
+        <button type="button" id="svAdd">+ Add service</button>
+        <button type="button" class="secondary" id="svImport">Update from QuickBooks</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Service</th><th>Offered to</th><th class="num">Rate</th><th>Billable</th><th>Active</th><th></th></tr></thead><tbody>
+      ${state.lists.serviceTypes.map((s) => `<tr><td>${esc(s.name)}<div class="small muted">${esc(s.help_text || "")}</div></td><td>${esc(s.for_person || "Everyone")}</td><td class="num">${money2(s.rate)}</td><td>${s.billable ? "Yes" : "No"}</td><td>${s.active ? "Yes" : "No"}</td><td><button type="button" class="ghost small" data-sv="${s.id}">Edit</button></td></tr>`).join("")}
       </tbody></table></div>`;
     $("#svAdd").onclick = () => serviceModal(null);
+    $("#svImport").onclick = () => importModal({
+      title: "Update services from QuickBooks",
+      intro: "In QuickBooks, go to <b>Sales &gt; Products and services</b>, click the export icon, and choose the file it downloads. Services that name a person are matched to that person by name.",
+      accept: ".csv,.xlsx",
+      turnOffLabel: "Turn off services that aren't in this file",
+      parse: (rows) => Importers.parseQuickBooksServices(rows, state.profiles.map((p) => ({ name: p.full_name || p.qb_name })).filter((p) => p.name)),
+      save: (rows, off) => S.importServices(rows, off),
+    });
     $$("[data-sv]").forEach((b) => (b.onclick = () => serviceModal(state.lists.serviceTypes.find((x) => x.id === Number(b.dataset.sv)))));
   }
   function serviceModal(s) {
-    s = s || { name: "", help_text: "", qb_item: "Consulting Time:Horticultural Consulting {consultant}", billable: true, sort_order: state.lists.serviceTypes.length + 1, active: true };
+    s = s || { name: "", help_text: "", qb_item: "", for_person: "", billable: true, sort_order: state.lists.serviceTypes.length + 1, active: true };
+    const names = Array.from(new Set(state.profiles.map((p) => p.full_name).filter(Boolean).concat(s.for_person ? [s.for_person] : [])));
     modal(`
-      <h2>${s.id ? "Edit service type" : "Add service type"}</h2>
+      <h2>${s.id ? "Edit service" : "Add service"}</h2>
       <div class="field"><label for="smName">Name <span class="req">*</span></label><input id="smName" value="${esc(s.name)}"></div>
+      <div class="field"><label for="smFor">Offered to</label>
+        <select id="smFor"><option value="">Everyone</option>${names.map((n) => `<option value="${esc(n)}" ${n === s.for_person ? "selected" : ""}>${esc(n)} only</option>`).join("")}</select></div>
       <div class="field"><label for="smHelp">What it covers</label><input id="smHelp" value="${esc(s.help_text || "")}"></div>
-      <div class="field"><label for="smQB">QuickBooks Product/Service <span class="req">*</span></label><input id="smQB" value="${esc(s.qb_item)}"></div>
+      <div class="field"><label for="smQB">QuickBooks Product/Service <span class="req">*</span></label><input id="smQB" value="${esc(s.qb_item || "")}" placeholder="Category:Name, as in QuickBooks"></div>
       <div class="grid2">
+        <div class="field"><label for="smRate">Rate ($)</label><input id="smRate" type="number" step="0.01" min="0" value="${s.rate == null ? "" : esc(s.rate)}"></div>
         <div class="field"><label for="smOrder">Order in list</label><input id="smOrder" type="number" value="${esc(s.sort_order)}"></div>
-        <div class="field" style="padding-top:28px"><label class="check"><input type="checkbox" id="smBill" ${s.billable ? "checked" : ""}> Billable</label><label class="check"><input type="checkbox" id="smActive" ${s.active ? "checked" : ""}> Active</label></div>
       </div>
+      <div class="field"><label class="check"><input type="checkbox" id="smBill" ${s.billable ? "checked" : ""}> Billable</label><label class="check"><input type="checkbox" id="smActive" ${s.active ? "checked" : ""}> Active</label></div>
       <div class="btn-row" style="justify-content:flex-end"><button class="secondary" data-close>Cancel</button><button data-go>Save</button></div>`,
     (m, close) => {
       $("[data-close]", m).onclick = close;
       $("[data-go]", m).onclick = async () => {
-        const name = $("#smName", m).value.trim(), qb = $("#smQB", m).value.trim();
-        if (!name || !qb) return toast("Name and QuickBooks Product/Service are needed.", true);
+        const name = $("#smName", m).value.trim(), qb = $("#smQB", m).value.trim() || name;
+        if (!name) return toast("Name is needed.", true);
         try {
-          await S.saveServiceType({ id: s.id, name, help_text: $("#smHelp", m).value.trim(), qb_item: qb, billable: $("#smBill", m).checked, sort_order: $("#smOrder", m).value, active: $("#smActive", m).checked });
+          await S.saveServiceType({ id: s.id, name, category: s.category, for_person: $("#smFor", m).value, rate: $("#smRate", m).value, help_text: $("#smHelp", m).value.trim(), qb_item: qb, billable: $("#smBill", m).checked, sort_order: $("#smOrder", m).value, active: $("#smActive", m).checked });
           await refreshLists(); close(); toast("Saved."); renderLists();
         } catch (e) { fail(e); }
       };
