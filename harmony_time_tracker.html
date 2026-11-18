@@ -408,25 +408,21 @@
       <div id="reportForm" class="card hidden">
         <h2>New Report</h2>
         <label>Report Type</label>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px">
-          <button type="button" onclick="selectReportType('monthly')" id="btnMonthly" class="report-type-btn" style="padding:12px; border:2px solid var(--moss); border-radius:8px; background:var(--moss); color:white; text-align:left">
-            <b>Monthly Property Care</b><br><span style="font-size:0.8rem; opacity:0.9">Overview, observations, recommendations</span>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px">
+          <button type="button" onclick="selectReportType('monthly')" id="btnMonthly" class="report-type-btn" style="padding:14px; border:2px solid var(--moss); border-radius:8px; background:var(--moss); color:white; text-align:left; cursor:pointer">
+            <b>Monthly Property Care</b><br><span style="font-size:0.8rem; opacity:0.9">Overview, observations, recommendations, priorities</span>
           </button>
-          <button type="button" onclick="selectReportType('sitevisit')" id="btnSitevisit" class="report-type-btn" style="padding:12px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left">
-            <b>Site Visit Photo</b><br><span style="font-size:0.8rem; opacity:0.7">Photos with observations</span>
+          <button type="button" onclick="selectReportType('sitevisit')" id="btnSitevisit" class="report-type-btn" style="padding:14px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left; cursor:pointer">
+            <b>Site Visit Photo</b><br><span style="font-size:0.8rem; opacity:0.7">Photos paired with observations</span>
           </button>
-          <button type="button" onclick="selectReportType('executive')" id="btnExecutive" class="report-type-btn" style="padding:12px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left">
-            <b>Executive Summary</b><br><span style="font-size:0.8rem; opacity:0.7">Prioritized findings</span>
-          </button>
-          <button type="button" onclick="selectReportType('letterhead')" id="btnLetterhead" class="report-type-btn" style="padding:12px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left">
-            <b>Company Letterhead</b><br><span style="font-size:0.8rem; opacity:0.7">Free-form text</span>
+          <button type="button" onclick="selectReportType('executive')" id="btnExecutive" class="report-type-btn" style="padding:14px; border:2px solid #ccc; border-radius:8px; background:white; color:#333; text-align:left; cursor:pointer">
+            <b>Executive Summary</b><br><span style="font-size:0.8rem; opacity:0.7">Prioritized findings for clients</span>
           </button>
         </div>
         <select id="reportType" style="display:none">
           <option value="monthly">Monthly Property Care</option>
           <option value="sitevisit">Site Visit Photo Report</option>
           <option value="executive">Executive Summary Report</option>
-          <option value="letterhead">Company Letterhead</option>
         </select>
         <label>Client</label>
         <div style="position:relative">
