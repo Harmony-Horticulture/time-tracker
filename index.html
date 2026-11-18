@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#5F351B">
   <title>Harmony Horticulture Time Tracker</title>
+  <!-- Light and dark browser tabs get their own icon. Safari uses favicon.png. -->
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="apple-touch-icon" href="assets/mark.png">
+  <link rel="icon" type="image/png" href="assets/favicon-light.png" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/png" href="assets/favicon-dark.png" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -25,11 +29,11 @@
   <!-- App -->
   <div id="appView" class="shell hidden">
     <aside class="sidebar">
-      <img class="logo" src="assets/logo-reversed.png" alt="Harmony Horticulture">
+      <div class="logo-block"><img class="logo" src="assets/logo-reversed.png" alt="Harmony Horticulture"></div>
       <nav id="sideNav"></nav>
       <div class="who">
         <div id="whoName"></div>
-        <div id="whoRole" class="small" style="opacity:0.8"></div>
+        <div id="whoRole"></div>
         <button id="signOutBtn" type="button">Sign out</button>
       </div>
     </aside>
@@ -61,6 +65,7 @@
   <script src="vendor/exceljs.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/demo-data.js"></script>
+  <script src="js/importers.js"></script>
   <script src="js/store.js"></script>
   <script src="js/exports.js"></script>
   <script src="js/app.js"></script>

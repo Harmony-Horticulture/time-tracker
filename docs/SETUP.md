@@ -24,6 +24,7 @@ This takes about 30 minutes, once. You don't need to write any code. Everything 
 2. Open [`supabase/01_schema.sql`](../supabase/01_schema.sql) here on GitHub, click the **Copy raw file** button, paste it into the SQL Editor and click **Run**. You should see "Success. No rows returned."
 3. Click **New query** again and do the same with [`supabase/02_seed.sql`](../supabase/02_seed.sql). This loads your 347 clients, 34 materials and 3 service types from the prototype.
 4. If you ran `01_schema.sql` before November 18, 2026, also run [`supabase/03_add_technician_role.sql`](../supabase/03_add_technician_role.sql). It adds the Technician role. Running it when you don't need it does no harm.
+5. Run [`supabase/04_quickbooks_lists_and_site_minimum.sql`](../supabase/04_quickbooks_lists_and_site_minimum.sql) the same way. It adds the one-off marker for customers and the site minimum amount, and loads your services from QuickBooks and your materials from the Materials Price List (with their units). Running it twice does no harm.
 
 ## 3. Create your own admin login
 
@@ -73,20 +74,24 @@ Supabase's built-in email only sends to members of your Supabase team and only a
    - Host: `smtp.resend.com`, Port: `465`
    - Username: `resend`, Password: your Resend API key
 
-(If you'd rather use your Google Workspace mailbox instead of Resend, that works too with an app password.)
+**Using your Google Workspace mailbox instead of Resend:** turn on 2-Step Verification for the sending account, create an app password at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), then in the same Supabase screen enter Host `smtp.gmail.com`, Port `465`, Username your full Google Workspace email address, and Password the 16-letter app password. The sender email must be that address (or an alias of it).
 
 ## 8. Sign in and invite your team
 
 1. Open the app and sign in with the email and password from step 3. It asks you to choose your password once.
 2. Go to **People**, fill in name, email and role, and click **Send invitation**. They get an email, click the link and choose a password. Each person signs in with their own email and password, and their role decides what they see:
    - **Consultant** (Robbie, Kristen) and **Technician** (Stephanie): log time and see only their own time.
-   - **Admin** (Krista, Kasey): everything above, plus everyone's time, approvals, downloads, people and lists.
+   - **Admin** (Krista, Kasey): everything above, plus everyone's time, downloads, people and lists.
 3. For each person, fill in their **QuickBooks name** (for example `Robbie Stephens`) so the QuickBooks file uses the right Product/Service.
-4. Check **Lists > Clients** and fill in the **QuickBooks customer** name wherever it differs (for example "Adelson Residence" in the app but "Addelson" in QuickBooks).
+4. Load your customers: in QuickBooks, go to **Sales > Customers**, click the export icon and choose **Export to Excel**. In the app, go to **Lists > Clients > Update from QuickBooks** and pick that file. Customers are matched on their QuickBooks **full name**, so two customers with the same short name stay separate. Tick **One-off** on any customer who isn't recurring.
 
 ---
 
 ## Good to know
+
+- **Updating your lists later:** in **Lists**, each tab has an update button. **Services:** export Products and Services from QuickBooks (Sales > Products and services > Export) and upload it. Items with a person's name in them (like "Robbie Stephens Consulting") are offered only to that person; everything else is offered to everyone. **Materials:** download the Materials Price List Google Sheet as .xlsx or .csv (File > Download) and upload it; each material keeps the unit shown in the sheet. **Customers:** see step 8.4.
+- **No approval step:** time can be changed by the person who logged it until it goes into a QuickBooks file. Then it's locked. If something needs fixing after that, an admin can select it in **Time reports** and click **Unlock**, and it goes into the next QuickBooks file again (so fix it in QuickBooks too).
+- **Browser tab icon:** the icon switches between the light and dark logo to match the browser's theme in Chrome, Edge and Firefox. Safari shows one icon and may not switch.
 
 - **Supabase free plan pauses a project after 7 days with no activity.** With daily use this won't happen. If it ever does, click **Restore** in Supabase.
 - **Backups:** the free plan has no automatic backups you can restore. Download a "Time by person" file monthly, or move to Supabase Pro ($25/month) for daily backups.
