@@ -25,6 +25,8 @@ A simple web app for logging billable time and materials, for consultants on the
 
 All Excel files use the official logo, the four brand colors and Montserrat.
 
+**On phones:** people add it to their home screen from the website (see "Put the app on your phone" in the setup guide). It opens full screen with the Harmony icon and loads its screens even with weak signal. Saving still needs a connection.
+
 ## How it's built
 
 - Plain HTML, CSS and JavaScript: no build step. GitHub Pages serves the files as they are.
