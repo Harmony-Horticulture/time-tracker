@@ -1017,7 +1017,7 @@
     $("#clAdd").onclick = () => clientModal(null);
     $("#clImport").onclick = () => importModal({
       title: "Update customers from QuickBooks",
-      intro: "In QuickBooks, go to <b>Sales &gt; Customers</b>, click the export icon and choose <b>Export to Excel</b>. Choose that file here. Customers are matched on their <b>full name</b>; new ones are added and existing ones keep their properties and one-off setting.",
+      intro: "In QuickBooks, go to <b>Sales &gt; Customers</b>, click the export icon and choose <b>Export to Excel</b>. Choose that file here. Customers are matched on their <b>Customer full name</b>. A client first added under the contact's name (like &quot;Joel Broder&quot;) is renamed to its QuickBooks name (like &quot;59 Evergreen&quot;) and keeps its time. New ones are added, and existing ones keep their properties and one-off setting.",
       accept: ".xlsx,.csv",
       turnOffLabel: "Turn off customers that aren't in this file",
       parse: Importers.parseQuickBooksCustomers,

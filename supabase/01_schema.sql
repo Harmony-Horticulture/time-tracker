@@ -311,3 +311,12 @@ create policy "entry materials write" on public.entry_materials for all
                  and (is_admin() or (e.user_id = auth.uid() and e.status = 'pending'))));
 
 create policy "history read" on public.entry_history for select using (is_admin());
+
+-- ---------------------------------------------------------------------
+-- Let signed-in users reach the tables (the security rules above still decide what they see).
+-- Newer Supabase projects don't grant this automatically for tables made in the SQL Editor.
+-- ---------------------------------------------------------------------
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+grant execute on all functions in schema public to authenticated;
