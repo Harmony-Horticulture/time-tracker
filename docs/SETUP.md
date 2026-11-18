@@ -23,6 +23,7 @@ This takes about 30 minutes, once. You don't need to write any code. Everything 
 1. In your Supabase project, click **SQL Editor** in the left menu, then **New query**.
 2. Open [`supabase/01_schema.sql`](../supabase/01_schema.sql) here on GitHub, click the **Copy raw file** button, paste it into the SQL Editor and click **Run**. You should see "Success. No rows returned."
 3. Click **New query** again and do the same with [`supabase/02_seed.sql`](../supabase/02_seed.sql). This loads your 347 clients, 34 materials and 3 service types from the prototype.
+4. If you ran `01_schema.sql` before November 18, 2026, also run [`supabase/03_add_technician_role.sql`](../supabase/03_add_technician_role.sql). It adds the Technician role. Running it when you don't need it does no harm.
 
 ## 3. Create your own admin login
 
@@ -77,7 +78,9 @@ Supabase's built-in email only sends to members of your Supabase team and only a
 ## 8. Sign in and invite your team
 
 1. Open the app and sign in with the email and password from step 3. It asks you to choose your password once.
-2. Go to **People**, fill in name, email and role, and click **Send invitation**. They get an email, click the link and choose a password.
+2. Go to **People**, fill in name, email and role, and click **Send invitation**. They get an email, click the link and choose a password. Each person signs in with their own email and password, and their role decides what they see:
+   - **Consultant** (Robbie, Kristen) and **Technician** (Stephanie): log time and see only their own time.
+   - **Admin** (Krista, Kasey): everything above, plus everyone's time, approvals, downloads, people and lists.
 3. For each person, fill in their **QuickBooks name** (for example `Robbie Stephens`) so the QuickBooks file uses the right Product/Service.
 4. Check **Lists > Clients** and fill in the **QuickBooks customer** name wherever it differs (for example "Adelson Residence" in the app but "Addelson" in QuickBooks).
 

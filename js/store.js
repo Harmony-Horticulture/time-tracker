@@ -59,6 +59,8 @@
     if (/row-level security|permission denied/i.test(msg)) return "You don't have permission to do that.";
     if (/Invalid login credentials/i.test(msg)) return "That email and password don't match.";
     if (/duplicate key/i.test(msg)) return "That name is already on the list.";
+    if (/does not exist|schema cache|PGRST20/i.test(msg)) return "The database isn't set up yet. Run supabase/01_schema.sql and 02_seed.sql in the Supabase SQL Editor (see docs/SETUP.md).";
+    if (/Failed to fetch|NetworkError/i.test(msg)) return "Can't reach the database. Check your internet connection and try again.";
     return msg;
   }
 
@@ -245,7 +247,7 @@
   // Demo (this browser only)
   // -------------------------------------------------------------------
   function makeDemoStore() {
-    const KEY = "hh_time_demo_v1";
+    const KEY = "hh_time_demo_v2";
     const SESSION = "hh_time_demo_session";
     const listeners = [];
     const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
@@ -255,9 +257,11 @@
     function seed() {
       const base = window.HH_DEMO_DATA || { clients: [], materials: [] };
       const people = [
-        { id: "u-admin", email: "krista@example.com", full_name: "Krista (Admin)", role: "admin", qb_name: "Krista", active: true },
+        { id: "u-krista", email: "krista@example.com", full_name: "Krista", role: "admin", qb_name: "Krista", active: true },
+        { id: "u-kasey", email: "kasey@example.com", full_name: "Kasey", role: "admin", qb_name: "Kasey", active: true },
         { id: "u-robbie", email: "robbie@example.com", full_name: "Robbie Stephens", role: "consultant", qb_name: "Robbie Stephens", active: true },
-        { id: "u-tessa", email: "tessa@example.com", full_name: "Tessa Steinberg", role: "consultant", qb_name: "Tessa Steinberg", active: true },
+        { id: "u-kristen", email: "kristen@example.com", full_name: "Kristen", role: "consultant", qb_name: "Kristen", active: true },
+        { id: "u-stephanie", email: "stephanie@example.com", full_name: "Stephanie", role: "technician", qb_name: "Stephanie", active: true },
       ];
       const serviceTypes = [
         { id: 1, name: "Site inspection", help_text: "Inspections, reports, property checks, irrigation checks, site visits", qb_item: "Consulting Time:Horticultural Consulting; Site Inspection {consultant}", billable: true, sort_order: 1, active: true },
@@ -268,8 +272,8 @@
         ["u-robbie", 1, 1.5, 1, "Inspection and report"],
         ["u-robbie", 3, 3, 2, "Rose pruning"],
         ["u-robbie", 8, 1, 3, "Meeting with crew on site"],
-        ["u-tessa", 12, 2, 1, "Irrigation check and report"],
-        ["u-tessa", 20, 1.25, 3, "Design ideas and plant selection"],
+        ["u-kristen", 12, 2, 1, "Irrigation check and report"],
+        ["u-stephanie", 20, 1.25, 2, "Fertilization and tank fill"],
         ["u-robbie", 25, 0.5, 2, "Controller set"],
       ];
       const today = new Date();
