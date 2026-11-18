@@ -59,6 +59,8 @@
     if (/row-level security|permission denied/i.test(msg)) return "You don't have permission to do that.";
     if (/Invalid login credentials/i.test(msg)) return "That email and password don't match.";
     if (/duplicate key/i.test(msg)) return "That name is already on the list.";
+    if (/does not exist|schema cache|PGRST20/i.test(msg)) return "The database isn't set up yet. Run supabase/01_schema.sql and 02_seed.sql in the Supabase SQL Editor (see docs/SETUP.md).";
+    if (/Failed to fetch|NetworkError/i.test(msg)) return "Can't reach the database. Check your internet connection and try again.";
     return msg;
   }
 

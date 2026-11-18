@@ -122,9 +122,11 @@
         await S.signIn(email, pass);
         setFailed(email, 0);
       } catch (e) {
+        const msg = S.friendlyError(e);
+        if (!/don't match/.test(msg)) { err.textContent = msg; return; } // only wrong passwords count toward the limit
         const n = failedCount(email) + 1;
         setFailed(email, n);
-        err.textContent = S.friendlyError(e) + (n >= 5 ? " You've tried 5 times, so please reset your password." : "");
+        err.textContent = msg + (n >= 5 ? " You've tried 5 times, so please reset your password." : "");
         if (n >= 5) renderForgot(email);
       }
     };
