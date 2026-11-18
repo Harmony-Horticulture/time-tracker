@@ -25,6 +25,7 @@ This takes about 30 minutes, once. You don't need to write any code. Everything 
 3. Click **New query** again and do the same with [`supabase/02_seed.sql`](../supabase/02_seed.sql). This loads your 347 clients, 34 materials and 3 service types from the prototype.
 4. If you ran `01_schema.sql` before November 18, 2026, also run [`supabase/03_add_technician_role.sql`](../supabase/03_add_technician_role.sql). It adds the Technician role. Running it when you don't need it does no harm.
 5. Run [`supabase/04_quickbooks_lists_and_site_minimum.sql`](../supabase/04_quickbooks_lists_and_site_minimum.sql) the same way. It adds the one-off marker for customers and the site minimum amount, and loads your services from QuickBooks and your materials from the Materials Price List (with their units). Running it twice does no harm.
+6. Run [`supabase/05_fix_access.sql`](../supabase/05_fix_access.sql) the same way. It lets signed-in people reach the tables (newer Supabase projects don't do this automatically) and makes sure the first person to sign up is an admin. Without it, signing in shows "You don't have permission to do that."
 
 ## 3. Create your own admin login
 

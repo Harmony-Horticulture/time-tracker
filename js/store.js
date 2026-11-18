@@ -58,6 +58,7 @@
     const msg = err.message || String(err);
     if (/hours_check/.test(msg)) return "Hours must be more than 0, at most 24, in 0.25 steps.";
     if (/description_check/.test(msg)) return "Please add a description (up to 500 characters).";
+    if (/permission denied for (table|function|sequence|schema)/i.test(msg)) return "The database is blocking the app. In Supabase, run supabase/05_fix_access.sql in the SQL Editor (see docs/SETUP.md).";
     if (/row-level security|permission denied/i.test(msg)) return "You don't have permission to do that.";
     if (/Invalid login credentials/i.test(msg)) return "That email and password don't match.";
     if (/duplicate key/i.test(msg)) return "That name is already on the list.";
@@ -231,7 +232,11 @@
         else await check(await sb.from("service_types").insert(row));
       },
       async importClients(rows, turnOff) {
-        return check(await sb.rpc("import_clients", { p_rows: rows, p_turn_off_missing: !!turnOff }));
+        const existing = await check(await sb.from("clients").select("id, name, qb_name"));
+        for (const m of Importers.matchByContact(rows, existing)) {
+          await check(await sb.from("clients").update({ name: m.full_name, qb_name: m.full_name }).eq("id", m.id));
+        }
+        return check(await sb.rpc("import_clients", { p_rows: rows.map((r) => ({ full_name: r.full_name })), p_turn_off_missing: !!turnOff }));
       },
       async importMaterials(rows, turnOff) {
         return check(await sb.rpc("import_materials", { p_rows: rows, p_turn_off_missing: !!turnOff }));
@@ -488,6 +493,9 @@
       },
       async importClients(rows, turnOff) {
         const ids = new Set(); let added = 0, updated = 0, off = 0;
+        Importers.matchByContact(rows, db.clients).forEach((m) => {
+          const c = db.clients.find((x) => x.id === m.id); c.name = m.full_name; c.qb_name = m.full_name;
+        });
         rows.forEach((r) => {
           const n = (r.full_name || "").trim(); if (!n) return;
           let c = db.clients.find((x) => (x.qb_name || "").toLowerCase() === n.toLowerCase()) || db.clients.find((x) => x.name.toLowerCase() === n.toLowerCase());

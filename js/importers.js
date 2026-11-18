@@ -124,15 +124,44 @@
     if (hi < 0) throw new Error("Couldn't find a customer name column. Export the customer list from QuickBooks and try again.");
     const head = rows[hi].map((c) => clean(c).toLowerCase());
     const pick = ["customer full name", "full name", "fullname", "customer", "name", "display name"].map((n) => head.indexOf(n)).find((i) => i >= 0);
+    // The contact's name (QuickBooks "Full name" next to "Customer full name"), used to find clients first added under a person's name
+    const contactCol = head[pick] === "customer full name" ? head.indexOf("full name") : -1;
     const seen = new Set();
-    return rows.slice(hi + 1).map((r) => clean(r[pick])).filter((n) => {
-      if (!n || /^total/i.test(n) || seen.has(n.toLowerCase())) return false;
+    const out = [];
+    rows.slice(hi + 1).forEach((r) => {
+      const n = clean(r[pick]);
+      if (!n || /^total/i.test(n) || seen.has(n.toLowerCase())) return;
+      // QuickBooks puts the date the report was run under the list, e.g. "Tuesday, November 17, 2026 07:23 PM GMT-07:00"
+      if (/^(mon|tues|wednes|thurs|fri|satur|sun)day, .*\d{4}/i.test(n) || /GMT[+-]\d/.test(n)) return;
       seen.add(n.toLowerCase());
-      return true;
-    }).map((full_name) => ({ full_name }));
+      const row = { full_name: n };
+      if (contactCol >= 0 && clean(r[contactCol])) row.contact = clean(r[contactCol]);
+      out.push(row);
+    });
+    return out;
   }
 
-  const api = { parseCSV, readFileRows, parseCharge, parseMaterialsSheet, parseQuickBooksServices, parseQuickBooksCustomers };
+  // Clients that were first added under the contact's name (e.g. "Joel Broder") instead of the
+  // QuickBooks customer name ("59 Evergreen"). Returns [{ id, full_name }] to rename before importing.
+  function matchByContact(rows, clients) {
+    const k = (s) => clean(s).replace(/\s+/g, " ").toLowerCase();
+    const known = new Set();
+    clients.forEach((c) => { known.add(k(c.name)); if (c.qb_name) known.add(k(c.qb_name)); });
+    const inFile = new Set(rows.map((r) => k(r.full_name)));
+    const free = clients.filter((c) => !inFile.has(k(c.name)) && !(c.qb_name && inFile.has(k(c.qb_name))));
+    const used = new Set();
+    const out = [];
+    rows.forEach((r) => {
+      if (!r.contact || known.has(k(r.full_name))) return;
+      const c = free.find((x) => !used.has(x.id) && (k(x.name) === k(r.contact) || (x.qb_name && k(x.qb_name) === k(r.contact))));
+      if (!c) return;
+      used.add(c.id);
+      out.push({ id: c.id, full_name: r.full_name });
+    });
+    return out;
+  }
+
+  const api = { parseCSV, readFileRows, parseCharge, parseMaterialsSheet, parseQuickBooksServices, parseQuickBooksCustomers, matchByContact };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Importers = api;
 })(typeof window !== "undefined" ? window : globalThis);

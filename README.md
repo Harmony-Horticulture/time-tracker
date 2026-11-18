@@ -43,6 +43,7 @@ All Excel files use the official logo, the four brand colors and Montserrat.
 | `supabase/02_seed.sql` | Starting clients, materials and service types |
 | `supabase/03_add_technician_role.sql` | Adds the Technician role |
 | `supabase/04_quickbooks_lists_and_site_minimum.sql` | One-off customers, site minimum amount, services and materials from your files |
+| `supabase/05_fix_access.sql` | Lets signed-in people reach the tables and makes sure there's an admin |
 | `harmony_time_tracker.html` | The original prototype, kept for reference |
 
 ## Not built yet
