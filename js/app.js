@@ -85,6 +85,30 @@
     $("#appView").classList.add("hidden");
     $("#authView").classList.remove("hidden");
     $("#authContent").innerHTML = html;
+    addPasswordToggles($("#authContent"));
+  }
+
+  // Eye button on password boxes so people can check what they typed
+  const EYE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  function addPasswordToggles(root) {
+    $$('input[type="password"]', root).forEach((input) => {
+      const wrap = document.createElement("div");
+      wrap.className = "pw-wrap";
+      input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "pw-toggle"; btn.innerHTML = EYE;
+      btn.setAttribute("aria-label", "Show password");
+      btn.onclick = () => {
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.innerHTML = show ? EYE_OFF : EYE;
+        btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+        input.focus();
+      };
+      wrap.appendChild(btn);
+    });
   }
 
   function renderSignIn(message) {
@@ -1007,6 +1031,7 @@
         <input id="clSearch" type="search" placeholder="Search clients" style="max-width:320px">
         <select id="clType" style="max-width:180px"><option value="">All customers</option><option value="recurring">Recurring</option><option value="oneoff">One-off</option></select>
         <button type="button" id="clAdd">+ Add client</button>
+        <button type="button" class="secondary" id="clBulk">Add several</button>
         <button type="button" class="secondary" id="clImport">Update from QuickBooks</button>
       </div>
       <div class="table-wrap" id="clTable"></div>
@@ -1024,6 +1049,7 @@
     $("#clSearch").oninput = draw;
     $("#clType").onchange = draw;
     $("#clAdd").onclick = () => clientModal(null);
+    $("#clBulk").onclick = bulkClientsModal;
     $("#clImport").onclick = () => importModal({
       title: "Update customers from QuickBooks",
       intro: "In QuickBooks, go to <b>Sales &gt; Customers</b>, click the export icon and choose <b>Export to Excel</b>. Choose that file here. Customers are matched on their <b>Customer full name</b>. A client first added under the contact's name (like &quot;Joel Broder&quot;) is renamed to its QuickBooks name (like &quot;59 Evergreen&quot;) and keeps its time. New ones are added, and existing ones keep their properties and one-off setting.",
@@ -1033,6 +1059,53 @@
       save: (rows, off) => S.importClients(rows, off),
     });
     draw();
+  }
+  // Paste a list of clients, one per line. Names already on the list are skipped.
+  function bulkClientsModal() {
+    modal(`
+      <h2>Add several clients</h2>
+      <p class="small muted">Type or paste one client per line, using the customer's full name as it appears in QuickBooks. You can paste a column straight from a spreadsheet. Names already on the list are skipped.</p>
+      <div class="field"><label for="bkNames">Clients</label><textarea id="bkNames" rows="10" placeholder="Smith Residence&#10;Desert Ridge HOA&#10;Mitschelles:Hargreaves"></textarea></div>
+      <div class="field"><label class="check"><input type="checkbox" id="bkOneOff"> These are one-off customers (not recurring)</label></div>
+      <p class="small" id="bkInfo"></p>
+      <div class="btn-row" style="justify-content:flex-end"><button class="secondary" data-close>Cancel</button><button data-go>Add clients</button></div>`,
+    (m, close) => {
+      $("[data-close]", m).onclick = close;
+      const key = (x) => x.replace(/\s+/g, " ").trim().toLowerCase();
+      const parse = () => {
+        const known = new Set();
+        state.lists.clients.forEach((c) => { known.add(key(c.name)); if (c.qb_name) known.add(key(c.qb_name)); });
+        const seen = new Set(); const fresh = []; let dupes = 0;
+        $("#bkNames", m).value.split(/\r?\n/).map((l) => l.split("\t")[0].replace(/\s+/g, " ").trim()).filter(Boolean).forEach((n) => {
+          const k = key(n);
+          if (known.has(k) || seen.has(k)) { dupes++; return; }
+          seen.add(k); fresh.push(n);
+        });
+        return { fresh, dupes };
+      };
+      $("#bkNames", m).oninput = () => {
+        const { fresh, dupes } = parse();
+        $("#bkInfo", m).textContent = fresh.length || dupes ? `${fresh.length} new${dupes ? `, ${dupes} already on the list` : ""}.` : "";
+      };
+      $("[data-go]", m).onclick = async () => {
+        const { fresh, dupes } = parse();
+        if (!fresh.length) return toast(dupes ? "All of those are already on the list." : "Add at least one name.", true);
+        const btn = $("[data-go]", m); btn.disabled = true;
+        const one_off = $("#bkOneOff", m).checked;
+        let added = 0;
+        try {
+          for (const name of fresh) {
+            await S.saveClient({ name, qb_name: name, properties: [], one_off, active: true });
+            added++;
+          }
+          await refreshLists(); close(); toast(`${added} client${added === 1 ? "" : "s"} added${dupes ? `, ${dupes} already on the list` : ""}.`); renderLists();
+        } catch (e) {
+          btn.disabled = false;
+          try { await refreshLists(); } catch (e2) { /* ignore */ }
+          fail(e);
+        }
+      };
+    });
   }
   function clientModal(c) {
     c = c || { name: "", qb_name: "", properties: [], one_off: false, active: true };
