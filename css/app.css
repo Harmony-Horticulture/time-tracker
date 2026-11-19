@@ -191,3 +191,9 @@ td.num, th.num { text-align: right; }
 .pRole { min-width: 140px; }
 .badge.oneoff { background: #FDE7F1; color: #A3125A; }
 .mat-row .unit { line-height: 1.25; }
+
+/* Show or hide password */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 48px; }
+.pw-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: transparent; color: var(--gray); padding: 8px 10px; border-radius: 6px; line-height: 0; }
+.pw-toggle:hover { color: var(--green); filter: none; }
