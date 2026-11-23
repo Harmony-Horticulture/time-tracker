@@ -926,7 +926,18 @@
     if (!isAdmin()) return;
     const el = $("#view-people");
     let invites = [];
+    let access = null; // last sign-in etc. from the admin-users function
+    let accessError = "";
     try { state.profiles = await S.listProfiles(); invites = await S.listInvitations(); } catch (e) { fail(e); }
+    try { access = await S.listAccess(); } catch (e) { accessError = S.friendlyError(e); }
+    const accessOf = (id) => (access || []).find((a) => a.id === id) || null;
+    const signInCell = (p) => {
+      const a = accessOf(p.id);
+      if (!a) return `<span class="muted">-</span>`;
+      const when = a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
+      const note = !p.active ? "" : a.needs_password ? (a.temp_password_set_at ? "Has a temporary password" : "Hasn't chosen a password yet") : "";
+      return `${esc(when)}${note ? `<br><span class="small muted">${esc(note)}</span>` : ""}`;
+    };
     el.innerHTML = `
       <div class="page-head"><div><p class="eyebrow">Admin</p><h1>People</h1></div></div>
       <div class="card">
@@ -940,6 +951,22 @@
           <div class="field" style="padding-top:28px"><button type="button" id="ivSend" style="width:100%">Send invitation</button></div>
         </div>
         ${invites.length ? `<p class="small"><b>Waiting to accept:</b> ${invites.map((i) => `${esc(i.full_name || i.email)} (${esc(i.email)}, ${esc(i.role)})`).join("; ")}</p>` : ""}
+      </div>
+      <div class="card">
+        <h2>Who has access</h2>
+        <p class="small muted">Everyone who can sign in to the Time Tracker and the Report Builder (they share one login).</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last sign-in</th><th></th></tr></thead>
+          <tbody>${state.profiles.map((p) => `<tr data-id="${esc(p.id)}">
+            <td>${esc(p.full_name || "")}${p.active ? "" : ` <span class="small muted">(turned off)</span>`}</td>
+            <td>${esc(p.email)}</td>
+            <td>${esc(roleLabel(p.role))}</td>
+            <td class="small">${signInCell(p)}</td>
+            <td style="text-align:right">${p.id === state.me.id ? `<span class="small muted">You</span>` : `<button type="button" class="small secondary" data-reset style="white-space:nowrap">Reset password</button>`}</td>
+          </tr>`).join("")}</tbody>
+        </table></div>
+        ${accessError ? `<p class="small error-text">Couldn't load sign-in details: ${esc(accessError)}</p>` : ""}
+        <p class="hint"><b>Reset password</b> gives the person a temporary password to pass on to them. It shows once, and they're asked to choose their own the next time they sign in. Passwords are stored scrambled, so nobody (admins included) can look up someone's current password.</p>
       </div>
       <div class="card">
         <h2>Team</h2>
@@ -968,6 +995,44 @@
       if (id !== state.me.id) { patch.role = $(".pRole", tr).value; patch.active = $(".pActive", tr).checked; }
       try { await S.updateProfile(id, patch); toast("Saved."); } catch (e) { fail(e); }
     }));
+    $$("[data-reset]", el).forEach((b) => (b.onclick = async () => {
+      const p = state.profiles.find((x) => x.id === b.closest("tr").dataset.id);
+      const name = p.full_name || p.email;
+      const ok = await confirmBox(
+        `Reset ${name}'s password?`,
+        `Their current password stops working and they're signed out everywhere. You'll get a temporary password to give them, and they'll choose their own the next time they sign in.`,
+        "Reset password"
+      );
+      if (!ok) return;
+      b.disabled = true;
+      try {
+        const r = await S.resetPassword(p.id);
+        await renderPeople();
+        showTempPassword(r);
+      } catch (e) { fail(e); b.disabled = false; }
+    }));
+  }
+
+  // Shows a new temporary password once. It isn't saved anywhere, so it can't be shown again.
+  function showTempPassword(r) {
+    const name = r.full_name || r.email;
+    modal(`
+      <h2>Temporary password for ${esc(name)}</h2>
+      <p class="small muted">Give this to ${esc(name)} in person, by phone or by text. This is the only time it's shown. If it gets lost, just reset it again.</p>
+      <div class="field"><label>Email</label><div><b>${esc(r.email)}</b></div></div>
+      <div class="field"><label for="tmpPw">Temporary password</label>
+        <input id="tmpPw" readonly value="${esc(r.temp_password)}" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.2rem;letter-spacing:1px"></div>
+      <p class="small">When they sign in with it, the app asks them to choose their own password before they can do anything else.${r.signed_out === false ? " (They may stay signed in on a device they're already using until it refreshes.)" : ""}</p>
+      <div class="btn-row" style="justify-content:flex-end"><button class="secondary" data-copy>Copy</button><button data-done>Done</button></div>
+    `, (m, close) => {
+      const input = $("#tmpPw", m);
+      input.onfocus = () => input.select();
+      $("[data-copy]", m).onclick = async () => {
+        try { await navigator.clipboard.writeText(r.temp_password); toast("Copied."); }
+        catch (e) { input.focus(); input.select(); toast("Press Ctrl+C (or Cmd+C) to copy."); }
+      };
+      $("[data-done]", m).onclick = close;
+    });
   }
 
   // =====================================================================

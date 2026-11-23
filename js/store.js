@@ -110,6 +110,18 @@
 
     const redirectTo = () => window.location.origin + window.location.pathname;
 
+    async function adminUsers(body) {
+      const { data, error } = await sb.functions.invoke("admin-users", { body });
+      if (error) {
+        let msg = error.message;
+        try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch (e) { /* not JSON */ }
+        if (/Failed to send a request|not found|404/i.test(msg)) msg = "The admin-users function isn't set up in Supabase yet (see docs/SETUP.md).";
+        throw new Error(msg);
+      }
+      if (data && data.error) throw new Error(data.error);
+      return data;
+    }
+
     return {
       mode: "live",
       onAuthChange(cb) {
@@ -211,6 +223,14 @@
       },
       async updateProfile(id, patch) {
         await check(await sb.from("profiles").update(patch).eq("id", id));
+      },
+      // Admin only: who has access, with last sign-in (supabase/functions/admin-users)
+      async listAccess() {
+        return (await adminUsers({ action: "list" })).people;
+      },
+      // Admin only: new temporary password, returned once and never stored
+      async resetPassword(userId) {
+        return adminUsers({ action: "reset_password", user_id: userId });
       },
       async saveClient(c) {
         const row = { name: c.name, qb_name: c.qb_name || null, properties: c.properties || [], one_off: !!c.one_off, active: c.active !== false };
@@ -361,6 +381,8 @@
       },
       async signInAs(id) {
         currentId = id;
+        const who = db.people.find((x) => x.id === id);
+        if (who) { who.last_sign_in_at = new Date().toISOString(); who.needs_password = false; who.temp_password_set_at = null; save(); }
         try { localStorage.setItem(SESSION, id); } catch (e) { /* ignore */ }
         notify("SIGNED_IN");
       },
@@ -468,6 +490,25 @@
         const p = db.people.find((x) => x.id === id);
         Object.assign(p, patch);
         save();
+      },
+      async listAccess() {
+        if (!isAdmin()) throw new Error("Only admins can manage people's access.");
+        return db.people.map((p) => ({
+          ...p,
+          last_sign_in_at: p.id === currentId ? new Date().toISOString() : p.last_sign_in_at || null,
+          needs_password: !!p.needs_password,
+        }));
+      },
+      async resetPassword(userId) {
+        if (!isAdmin()) throw new Error("Only admins can manage people's access.");
+        if (userId === currentId) throw new Error("To change your own password, sign out and use Forgot your password.");
+        const p = db.people.find((x) => x.id === userId);
+        const set = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        const r = Array.from({ length: 12 }, () => set[Math.floor(Math.random() * set.length)]).join("");
+        p.needs_password = true;
+        p.temp_password_set_at = new Date().toISOString();
+        save();
+        return { temp_password: `${r.slice(0, 4)}-${r.slice(4, 8)}-${r.slice(8)}`, email: p.email, full_name: p.full_name, signed_out: true };
       },
       async saveClient(c) {
         if (db.clients.some((x) => x.name.toLowerCase() === c.name.toLowerCase() && x.id !== c.id)) throw new Error(friendlyError({ message: "duplicate key" }));

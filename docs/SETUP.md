@@ -86,6 +86,17 @@ Supabase's built-in email only sends to members of your Supabase team and only a
 3. For each person, fill in their **QuickBooks name** (for example `Robbie Stephens`) so the QuickBooks file uses the right Product/Service.
 4. Load your customers: in QuickBooks, go to **Sales > Customers**, click the export icon and choose **Export to Excel**. In the app, go to **Lists > Clients > Update from QuickBooks** and pick that file. Customers are matched on their QuickBooks **full name**, so two customers with the same short name stay separate. Tick **One-off** on any customer who isn't recurring.
 
+## 9. Turn on password resets for admins (Who has access)
+
+The **People** page has a **Who has access** list showing everyone who can sign in, their role and when they last signed in, with a **Reset password** button. Reset gives that person a temporary password, shown once to the admin, and the app makes them choose their own password the next time they sign in. Passwords are stored scrambled, so nobody can look up someone's current password; a reset is how you get someone back in.
+
+It needs one small server function in Supabase, set up once:
+
+1. In Supabase, open **SQL Editor > New query**, paste [`supabase/06_admin_users.sql`](../supabase/06_admin_users.sql) and click **Run**. (It lets the function sign the person out of any devices they're still signed in on.)
+2. Go to **Edge Functions > Deploy a new function > Via Editor**, name it `admin-users`, paste [`supabase/functions/admin-users/index.ts`](../supabase/functions/admin-users/index.ts) and click **Deploy**. Leave **Verify JWT** on. There are no secrets to add.
+
+Only active admins can use it. The function checks who's asking before it does anything, and the key that can change passwords stays inside Supabase.
+
 ---
 
 ## Put the app on your phone
