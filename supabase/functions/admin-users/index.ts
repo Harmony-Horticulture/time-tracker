@@ -66,16 +66,18 @@ Deno.serve(async (req) => {
     const caller = who?.user;
     if (!caller) return json({ error: "Please sign in again." }, 401);
 
+    // Profiles are read as the caller (admins can read everyone's under the
+    // database rules). The service role is used only for the sign-in admin API.
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: me } = await admin.from("profiles").select("id, role, active").eq("id", caller.id).maybeSingle();
+    const { data: me } = await asCaller.from("profiles").select("id, role, active").eq("id", caller.id).maybeSingle();
     if (!me || me.role !== "admin" || !me.active) return json({ error: "Only admins can manage people's access." }, 403);
 
     const body = await req.json().catch(() => ({}));
 
     if (body.action === "list") {
-      const { data: profiles, error } = await admin
+      const { data: profiles, error } = await asCaller
         .from("profiles")
         .select("id, email, full_name, role, active, qb_name")
         .order("full_name");
@@ -105,7 +107,7 @@ Deno.serve(async (req) => {
       const id = String(body.user_id || "");
       if (!id) return json({ error: "Choose a person." }, 400);
       if (id === caller.id) return json({ error: "To change your own password, sign out and use Forgot your password." }, 400);
-      const { data: target } = await admin.from("profiles").select("id, email, full_name").eq("id", id).maybeSingle();
+      const { data: target } = await asCaller.from("profiles").select("id, email, full_name").eq("id", id).maybeSingle();
       if (!target) return json({ error: "That person doesn't have a login." }, 404);
 
       const password = tempPassword();
