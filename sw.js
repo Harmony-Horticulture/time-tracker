@@ -1,10 +1,10 @@
 // Harmony Horticulture Time Tracker: lets phones install the app and open it quickly.
 // Always tries the network first, so a new version shows up as soon as it's on GitHub.
 // Falls back to the saved copy when there's no signal. Database calls are never saved here.
-const CACHE = "hh-time-v1";
+const CACHE = "hh-time-v2";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest", "css/app.css",
-  "js/config.js", "js/demo-data.js", "js/importers.js", "js/store.js", "js/exports.js", "js/app.js",
+  "js/config.js", "js/demo-data.js", "js/importers.js", "js/xlsx-lite.js", "js/consultant-check.js", "js/store.js", "js/exports.js", "js/app.js",
   "vendor/supabase.min.js", "vendor/exceljs.min.js",
   "assets/logo.png", "assets/logo-reversed.png", "assets/mark-reversed.png",
   "assets/icon-192.png", "assets/icon-512.png", "favicon.png",

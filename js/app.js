@@ -16,6 +16,7 @@
     returnView: null,
     weekStart: null,
     review: null,
+    check: null,
     listsTab: "clients",
   };
 
@@ -205,6 +206,7 @@
     log: svg('<path d="M12 5v14M5 12h14"/>'),
     mytime: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
     review: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    check: svg('<path d="M9 11l2.5 2.5L16 9"/><rect x="3.5" y="3.5" width="17" height="17" rx="2"/>'),
     people: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.1.7 3.5 2.8 3.5 5.7"/>'),
     lists: svg('<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>'),
     report: svg('<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
@@ -221,7 +223,7 @@
       { id: "log", label: "Log time" },
       { id: "mytime", label: "My time" },
     ];
-    if (isAdmin()) items.push({ id: "review", label: "Time reports", admin: true }, { id: "people", label: "People", admin: true }, { id: "lists", label: "Lists", admin: true });
+    if (isAdmin()) items.push({ id: "review", label: "Time reports", admin: true }, { id: "check", label: "Consultant check", admin: true }, { id: "people", label: "People", admin: true }, { id: "lists", label: "Lists", admin: true });
     return items;
   }
   function renderNav() {
@@ -245,7 +247,7 @@
     state.view = view;
     $$(".view").forEach((v) => v.classList.toggle("hidden", v.id !== "view-" + view));
     renderNav();
-    ({ log: renderLog, mytime: renderMyTime, review: renderReview, people: renderPeople, lists: renderLists })[view]();
+    ({ log: renderLog, mytime: renderMyTime, review: renderReview, check: renderCheck, people: renderPeople, lists: renderLists })[view]();
     window.scrollTo(0, 0);
   }
 
@@ -267,6 +269,9 @@
     $("#whoName").textContent = state.me.email || state.me.full_name;
     $("#whoRole").textContent = roleLabel(state.me.role);
     state.form = null;
+    // Links from the other app can open a page directly, like time-tracker/#people
+    const m = location.hash.match(/^#([a-z]+)$/);
+    if (m && navItems().some((i) => i.id === m[1])) { state.view = m[1]; history.replaceState(null, "", location.pathname + location.search); }
     go(state.view);
   }
 
@@ -926,6 +931,132 @@
   // =====================================================================
   // Admin: people and invitations (TT-02)
   // =====================================================================
+  // =====================================================================
+  // Consultant check: their bill vs. the time they logged vs. what's paid
+  // =====================================================================
+  function lastMonth() {
+    const d = new Date();
+    const first = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    const last = new Date(d.getFullYear(), d.getMonth(), 0);
+    return { from: isoDate(first), to: isoDate(last) };
+  }
+  const money = (n) => "$" + (Math.round((n || 0) * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // People who send Harmony a bill: everyone active who isn't an admin
+  const billingPeople = () => state.profiles.filter((p) => p.active !== false && p.role !== "admin");
+  const sameVendor = (p, vendor) => {
+    const v = String(vendor || "").toLowerCase();
+    return [p.full_name, p.qb_name].filter(Boolean).some((n) => v.includes(n.toLowerCase()) || n.toLowerCase().includes(v));
+  };
+
+  async function renderCheck() {
+    if (!isAdmin()) return;
+    const el = $("#view-check");
+    if (!state.check) {
+      const people = billingPeople();
+      state.check = { ...lastMonth(), userId: people.length ? people[0].id : "", bill: null, fileName: "", paid: "", openBills: undefined };
+    }
+    const c = state.check;
+    const person = state.profiles.find((p) => p.id === c.userId);
+    el.innerHTML = `
+      <div class="page-head"><div><p class="eyebrow">Admin · before you pay a consultant's bill</p><h1>Consultant check</h1></div></div>
+      <div class="card">
+        <p class="muted small" style="margin-top:0">Pick the person and the month, then add the bill or time log they sent you. The app lines it up against the time they logged here, visit by visit, and shows anything that doesn't match. Nothing is saved or changed.</p>
+        <div class="grid4">
+          <div class="field"><label for="ccPerson">Consultant</label>
+            <select id="ccPerson">${billingPeople().map((p) => `<option value="${esc(p.id)}" ${p.id === c.userId ? "selected" : ""}>${esc(p.full_name || p.email)}</option>`).join("")}</select></div>
+          <div class="field"><label for="ccFrom">From</label><input type="date" id="ccFrom" value="${esc(c.from)}"></div>
+          <div class="field"><label for="ccTo">To</label><input type="date" id="ccTo" value="${esc(c.to)}"></div>
+          <div class="field"><label for="ccPaid">Paid so far ($)</label><input type="number" id="ccPaid" min="0" step="0.01" inputmode="decimal" placeholder="0.00" value="${esc(c.paid)}"></div>
+        </div>
+        <div class="field"><label for="ccFile">Their bill or time log (.xlsx or .csv)</label>
+          <input type="file" id="ccFile" accept=".xlsx,.csv">
+          <p class="muted small" style="margin:6px 0 0">${c.fileName ? `Using <strong>${esc(c.fileName)}</strong> (${c.bill.lines.length} lines). Choose another file to replace it.` : "Their own time log works best (Property, Service Date, Hours, Description, Rate). The QuickBooks bill sheet works too, but it has no dates, so it's compared client by client."}</p></div>
+        <div id="ccOpen"></div>
+      </div>
+      <div class="stat-row" id="ccStats"></div>
+      <div id="ccBody"></div>`;
+
+    $("#ccPerson").onchange = (e) => { c.userId = e.target.value; c.bill = null; c.fileName = ""; c.paid = ""; renderCheck(); };
+    $("#ccFrom").onchange = (e) => { c.from = e.target.value; renderCheck(); };
+    $("#ccTo").onchange = (e) => { c.to = e.target.value; renderCheck(); };
+    $("#ccPaid").onchange = (e) => { c.paid = e.target.value; renderCheck(); };
+    $("#ccFile").onchange = async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      try {
+        const rows = await window.ConsultantCheck.readBillFile(f);
+        const bill = window.ConsultantCheck.parseBill(rows);
+        if (bill.error) return toast(bill.error, true);
+        if (!bill.lines.length) return toast("No time lines found in that file.", true);
+        c.bill = bill; c.fileName = f.name;
+        // Use the bill's own dates when they fall outside the month picked
+        const dates = bill.lines.map((l) => l.date).filter(Boolean).sort();
+        if (dates.length && (dates[0] < c.from || dates[dates.length - 1] > c.to)) { c.from = dates[0].slice(0, 8) + "01"; c.to = isoDate(new Date(Number(dates[0].slice(0, 4)), Number(dates[0].slice(5, 7)), 0)); if (dates[dates.length - 1] > c.to) c.to = dates[dates.length - 1]; }
+        renderCheck();
+      } catch (err) { console.warn(err); toast("Couldn't read that file. Save it as .xlsx or .csv and try again.", true); }
+    };
+
+    // Bills from this person QuickBooks still shows as open (from the dashboard's A/P report)
+    if (c.openBills === undefined) { c.openBills = null; S.latestOpenBills().then((ob) => { c.openBills = ob || false; if (state.view === "check") renderCheck(); }); }
+    const open = person && c.openBills ? c.openBills.items.filter((b) => sameVendor(person, b.name) && Number(b.open) > 0) : [];
+    if (person && c.openBills) {
+      $("#ccOpen").innerHTML = open.length
+        ? `<p class="small" style="margin:4px 0 0"><strong>QuickBooks shows ${open.length === 1 ? "this bill" : "these bills"} from ${esc(person.full_name)} still unpaid</strong> (as of ${esc(niceDate(c.openBills.asOf, { month: "short", day: "numeric" }))}): ${open.map((b) => `${esc(b.num || b.type)} dated ${esc(niceDate(b.date, { month: "short", day: "numeric" }))}, ${money(b.amount)} with ${money(b.open)} open`).join("; ")}.</p>`
+        : `<p class="small muted" style="margin:4px 0 0">QuickBooks shows no unpaid bills from ${esc(person.full_name)} (as of ${esc(niceDate(c.openBills.asOf, { month: "short", day: "numeric" }))}).</p>`;
+    }
+
+    let entries = [];
+    try { entries = c.userId ? await S.listEntries({ userId: c.userId, from: c.from, to: c.to }) : []; }
+    catch (e) { $("#ccBody").innerHTML = `<div class="card">${esc(S.friendlyError(e))}</div>`; return; }
+    if (state.view !== "check") return;
+
+    const lines = c.bill ? c.bill.lines.filter((l) => !l.date || (l.date >= c.from && l.date <= c.to)) : [];
+    const res = window.ConsultantCheck.compare(entries, lines, { hasDates: c.bill ? c.bill.hasDates : true });
+    c.result = res;
+    const t = res.totals;
+    const paid = Number(c.paid) || 0;
+    const billTotal = t.billAmount;
+    $("#ccStats").innerHTML = `
+      <div class="stat"><div class="label">Logged in the app</div><div class="num">${fmtH(t.appHours)} hrs</div></div>
+      <div class="stat"><div class="label">On their bill</div><div class="num">${c.bill ? fmtH(t.billHours) + " hrs" : "–"}</div></div>
+      <div class="stat" style="border-left-color:${c.bill && Math.abs(t.diff) >= 0.01 ? "var(--pink)" : "var(--leaf)"}"><div class="label">Difference</div><div class="num">${c.bill ? (t.diff > 0 ? "+" : "") + fmtH(t.diff) + " hrs" : "–"}</div></div>
+      <div class="stat"><div class="label">Bill total</div><div class="num">${c.bill && c.bill.hasAmounts ? money(billTotal) : "–"}</div></div>
+      <div class="stat"><div class="label">Paid</div><div class="num">${money(paid)}</div></div>
+      <div class="stat" style="border-left-color:${c.bill && c.bill.hasAmounts && billTotal - paid > 0.005 ? "var(--pink)" : "var(--leaf)"}"><div class="label">Still owed</div><div class="num">${c.bill && c.bill.hasAmounts ? money(billTotal - paid) : "–"}</div></div>`;
+
+    if (!c.bill) {
+      $("#ccBody").innerHTML = `<div class="card"><p class="muted" style="margin:0">${entries.length ? `${esc(person ? person.full_name : "They")} logged ${fmtH(t.appHours)} hours across ${entries.length} entries in these dates. Add their bill above to compare.` : "No time logged in these dates. Add their bill above to see what's on it."}</p></div>`;
+      return;
+    }
+    const issues = res.visits.filter((v) => !v.ok);
+    const vrow = (v) => `<tr>
+      <td>${esc(v.client)}</td>
+      ${res.useDates ? `<td style="white-space:nowrap">${v.date ? esc(niceDate(v.date, { month: "short", day: "numeric" })) : ""}${v.appDate ? `<div class="muted small">app: ${esc(niceDate(v.appDate, { month: "short", day: "numeric" }))}</div>` : ""}</td>` : ""}
+      <td class="num">${fmtH(v.appHours)}</td><td class="num">${fmtH(v.billHours)}</td>
+      <td>${v.ok ? `<span class="badge approved">${esc(v.status)}</span>` : `<span class="badge pending">${esc(v.status)}</span>`}</td>
+      <td class="small">${esc(v.billDesc.join("; ") || v.appDesc.join("; "))}</td></tr>`;
+    const head = `<thead><tr><th>Client</th>${res.useDates ? "<th>Date</th>" : ""}<th class="num">App hrs</th><th class="num">Bill hrs</th><th>Result</th><th>Description</th></tr></thead>`;
+    $("#ccBody").innerHTML = `
+      <div class="card">
+        <div class="btn-row" style="margin-bottom:12px"><h2 style="margin:0;flex:1">${issues.length ? `${issues.length} ${issues.length === 1 ? "thing" : "things"} to check` : "Everything matches"}</h2>
+          <button type="button" id="ccDownload">Download Excel</button></div>
+        ${!res.useDates ? `<p class="muted small">This file has no dates, so hours are compared client by client for the whole period.</p>` : ""}
+        ${issues.length ? `<div class="table-wrap"><table>${head}<tbody>${issues.map(vrow).join("")}</tbody></table></div>` : `<p class="muted">Every visit on the bill matches the time logged in the app.</p>`}
+      </div>
+      <div class="card">
+        <h2 style="margin-top:0">By client</h2>
+        <div class="table-wrap"><table><thead><tr><th>Client</th><th class="num">App hrs</th><th class="num">Bill hrs</th><th class="num">Difference</th>${c.bill.hasAmounts ? '<th class="num">Billed</th>' : ""}</tr></thead>
+          <tbody>${res.clients.map((x) => `<tr><td>${esc(x.client)}${x.issues ? ' <span class="badge pending">check</span>' : ""}</td><td class="num">${fmtH(x.appHours)}</td><td class="num">${fmtH(x.billHours)}</td><td class="num">${Math.abs(x.diff) >= 0.01 ? (x.diff > 0 ? "+" : "") + fmtH(x.diff) : ""}</td>${c.bill.hasAmounts ? `<td class="num">${money(x.billAmount)}</td>` : ""}</tr>`).join("")}</tbody></table></div>
+      </div>
+      <details class="card"><summary style="cursor:pointer;font-weight:600">Every visit (${res.visits.length})</summary>
+        <div class="table-wrap" style="margin-top:12px"><table>${head}<tbody>${res.visits.map(vrow).join("")}</tbody></table></div></details>`;
+    $("#ccDownload").onclick = async () => {
+      try {
+        await window.Exports.exportConsultantCheck(res, { person: person ? person.full_name : "", from: c.from, to: c.to, fileName: c.fileName, paid, hasAmounts: c.bill.hasAmounts });
+      } catch (e) { fail(e); }
+    };
+  }
+
   async function renderPeople() {
     if (!isAdmin()) return;
     const el = $("#view-people");
