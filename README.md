@@ -14,6 +14,7 @@ A simple web app for logging billable time and materials, for consultants on the
 - Edits or deletes their own entries until they go into a QuickBooks file
 - Downloads their own time as a branded Excel file
 - Opens the report-building app from **Build a report** in the menu (set its address as `REPORT_BUILDER_URL` in `js/config.js`)
+- Opens the **SOPs** library from the menu: every SOP to read on screen or download as a PDF (it lives in the report-building app, same login)
 
 **Admins**
 - **Time reports:** all time filtered by date range, person, client, and whether it's in a QuickBooks file yet
