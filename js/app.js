@@ -269,6 +269,9 @@
     $("#whoName").textContent = state.me.email || state.me.full_name;
     $("#whoRole").textContent = roleLabel(state.me.role);
     state.form = null;
+    // Links from the other app can open a page directly, like time-tracker/#people
+    const m = location.hash.match(/^#([a-z]+)$/);
+    if (m && navItems().some((i) => i.id === m[1])) { state.view = m[1]; history.replaceState(null, "", location.pathname + location.search); }
     go(state.view);
   }
 
