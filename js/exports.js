@@ -346,5 +346,59 @@
     return { sent: list, held };
   }
 
-  window.Exports = { exportEntries, exportTimeByPerson, exportClientSummary, exportAllClientSummaries, exportQuickBooks, quickBooksCheck };
+  // Consultant check: summary, things to check, by client, every visit
+  async function exportConsultantCheck(res, { person, from, to, fileName, paid, hasAmounts }) {
+    const wb = new ExcelJS.Workbook();
+    const used = new Set();
+    const sub = `${person} · ${rangeText(from, to)}`;
+    const t = res.totals;
+    const summary = [
+      { item: "Hours logged in the app", value: t.appHours, fmt: HOURS },
+      { item: "Hours on their bill", value: t.billHours, fmt: HOURS },
+      { item: "Difference (bill minus app)", value: t.diff, fmt: HOURS },
+      ...(hasAmounts ? [
+        { item: "Bill total", value: t.billAmount, fmt: MONEY },
+        { item: "Paid so far", value: paid || 0, fmt: MONEY },
+        { item: "Still owed", value: t.billAmount - (paid || 0), fmt: MONEY },
+      ] : []),
+      { item: "Visits to check", value: t.issues, fmt: "0" },
+      { item: "Bill file", value: fileName || "", fmt: null },
+    ];
+    const ws = await brandedSheet(wb, used, {
+      name: "Summary", title: "Consultant check", subtitle: sub,
+      columns: [{ header: "", key: "item", width: 34 }, { header: "", key: "value", width: 30, align: "right" }],
+      rows: summary.map((r) => ({ item: r.item, value: r.value })),
+    });
+    summary.forEach((r, i) => { if (r.fmt) ws.getRow(7 + i).getCell(2).numFmt = r.fmt; });
+    const vcols = [
+      { header: "Client", key: "client", width: 30, wrap: true },
+      ...(res.useDates ? [{ header: "Date", key: "date", width: 12, numFmt: DATE }, { header: "Date in app", key: "appDate", width: 12, numFmt: DATE }] : []),
+      { header: "App hours", key: "app", width: 11, numFmt: HOURS, align: "right" },
+      { header: "Bill hours", key: "bill", width: 11, numFmt: HOURS, align: "right" },
+      { header: "Result", key: "status", width: 28, wrap: true },
+      ...(hasAmounts ? [{ header: "Billed", key: "amount", width: 12, numFmt: MONEY, align: "right" }] : []),
+      { header: "On the bill", key: "billDesc", width: 40, wrap: true },
+      { header: "In the app", key: "appDesc", width: 40, wrap: true },
+    ];
+    const vrow = (v) => ({ client: v.client, date: v.date ? fmtDate(v.date) : null, appDate: v.appDate ? fmtDate(v.appDate) : null, app: v.appHours, bill: v.billHours, status: v.status, amount: v.billAmount || null, billDesc: v.billDesc.join("; "), appDesc: v.appDesc.join("; ") });
+    const issues = res.visits.filter((v) => !v.ok);
+    await brandedSheet(wb, used, { name: "To check", title: "Things to check", subtitle: sub, columns: vcols, rows: issues.map(vrow), emptyText: "Everything matches." });
+    await brandedSheet(wb, used, {
+      name: "By client", title: "By client", subtitle: sub,
+      columns: [
+        { header: "Client", key: "client", width: 34, wrap: true },
+        { header: "App hours", key: "app", width: 11, numFmt: HOURS, align: "right" },
+        { header: "Bill hours", key: "bill", width: 11, numFmt: HOURS, align: "right" },
+        { header: "Difference", key: "diff", width: 11, numFmt: HOURS, align: "right" },
+        ...(hasAmounts ? [{ header: "Billed", key: "amount", width: 12, numFmt: MONEY, align: "right" }] : []),
+        { header: "Visits to check", key: "issues", width: 14, align: "right" },
+      ],
+      rows: res.clients.map((x) => ({ client: x.client, app: x.appHours, bill: x.billHours, diff: x.diff, amount: x.billAmount, issues: x.issues || null })),
+      totals: { client: "Total", app: t.appHours, bill: t.billHours, diff: t.diff, amount: hasAmounts ? t.billAmount : null, issues: t.issues },
+    });
+    await brandedSheet(wb, used, { name: "Every visit", title: "Every visit", subtitle: sub, columns: vcols, rows: res.visits.map(vrow) });
+    await download(wb, `${person} - Consultant Check - ${from} to ${to}.xlsx`);
+  }
+
+  window.Exports = { exportEntries, exportTimeByPerson, exportClientSummary, exportAllClientSummaries, exportQuickBooks, quickBooksCheck, exportConsultantCheck };
 })();

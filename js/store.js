@@ -166,6 +166,13 @@
       async listProfiles() {
         return check(await sb.from("profiles").select("*").order("full_name"));
       },
+      // Latest QuickBooks A/P Aging Detail the dashboard loaded (open bills). Empty if there isn't one.
+      async latestOpenBills() {
+        try {
+          const rows = await check(await sb.from("finance_snapshots").select("as_of, data").eq("kind", "ap_detail").order("as_of", { ascending: false }).limit(1));
+          return rows.length ? { asOf: rows[0].as_of, items: (rows[0].data && rows[0].data.items) || [] } : null;
+        } catch (e) { return null; }
+      },
       async listInvitations() {
         return check(await sb.from("invitations").select("*").is("accepted_at", null).order("invited_at"));
       },
@@ -313,7 +320,7 @@
         { id: "u-krista", email: "krista@example.com", full_name: "Krista", role: "admin", qb_name: "Krista", active: true },
         { id: "u-kasey", email: "kasey@example.com", full_name: "Kasey Harman", role: "admin", qb_name: "Kasey Harman", active: true },
         { id: "u-robbie", email: "robbie@example.com", full_name: "Robbie Stephens", role: "consultant", qb_name: "Robbie Stephens", active: true },
-        { id: "u-kristen", email: "kristen@example.com", full_name: "Kristen Battafarano", role: "consultant", qb_name: "Kristen Battafarano", active: true },
+        { id: "u-kristen", email: "kristen@example.com", full_name: "Kristen Battafarano", role: "consultant", qb_name: "Kristen Battafarano", active: false },
         { id: "u-stephanie", email: "stephanie@example.com", full_name: "Stephanie Lara", role: "technician", qb_name: "Stephanie Lara", active: true },
       ];
       const serviceTypes = (base.serviceTypes || []).map((x) => ({ ...x }));
@@ -412,6 +419,12 @@
         return db.people.slice().sort((a, b) => a.full_name.localeCompare(b.full_name));
       },
       async listInvitations() { return db.invitations.slice(); },
+      async latestOpenBills() {
+        const d = new Date(); d.setDate(1);
+        const iso = (x) => x.toISOString().slice(0, 10);
+        const last = new Date(d.getFullYear(), d.getMonth() - 1, 28);
+        return { asOf: iso(new Date()), items: db.people.filter((p) => p.role !== "admin").slice(0, 1).map((p) => ({ name: p.full_name, num: "OCT-26", type: "Bill", date: iso(last), due: iso(d), amount: 1200, open: 1200 })) };
+      },
       async listEntries(f = {}) {
         let rows = db.entries.filter((e) => isAdmin() || e.user_id === currentId);
         if (f.userId) rows = rows.filter((e) => e.user_id === f.userId);
